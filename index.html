@@ -75,8 +75,11 @@
             touchTimer = setTimeout(() => {
               const overlay = document.getElementById('task-overlay');
               const overlayContent = document.getElementById('task-overlay-content');
-              const lines = tooltip.innerText.split('\n').map(line => `<div>${line}</div>`).join('');
-              overlayContent.innerHTML = lines;
+              let lines = tooltip.innerText.split(/[\r\n]+/);
+              if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
+                lines = tooltip.innerText.split(/(?=כתובת:|קוד:|סיבה:)/).filter(line => line.trim());
+              }
+              overlayContent.innerHTML = lines.map(line => `<p>${line.trim()}</p>`).join('');
               overlay.style.display = 'flex';
             }, 500);
           }
@@ -294,13 +297,14 @@
       max-height: 80%;
       overflow-y: auto;
       font-size: 1.5em;
-      text-align: center;
+      text-align: right;
       border-radius: 8px;
       white-space: pre-line;
       line-height: 2;
     }
-    #task-overlay-content div {
-      margin-bottom: 10px;
+    #task-overlay-content p {
+      margin: 0 0 15px 0;
+      direction: rtl;
     }
 
     @media (max-width: 600px) {
