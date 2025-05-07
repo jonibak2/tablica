@@ -129,7 +129,71 @@
     });
   </script>
   <style>
-    /* Стили тут */
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #f4f4f4;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+      vertical-align: top;
+      position: relative;
+    }
+    th {
+      background: #70ac4c;
+      color: white;
+    }
+    .today {
+      background: #89c95a !important;
+    }
+    th.name {
+      background: #f09c9c;
+    }
+    .checkboxes label {
+      display: inline-block;
+      margin: 0 2px;
+      position: relative;
+    }
+    .tooltip {
+      display: none;
+      position: absolute;
+      bottom: 100%;
+      right: 0;
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 10px;
+      z-index: 10;
+      max-width: 300px;
+      white-space: pre-line;
+    }
+    label:hover .tooltip {
+      display: block;
+    }
+    #admin-button {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+    }
+    #admin-panel, #single-panel {
+      display: none;
+      position: fixed;
+      bottom: 50px;
+      left: 10px;
+      background: white;
+      border: 1px solid #ccc;
+      padding: 10px;
+      width: 300px;
+    }
+    textarea, input, select {
+      width: 100%;
+      margin-bottom: 5px;
+    }
   </style>
 </head>
 <body>
@@ -172,5 +236,13 @@
     <button id="single-insert">💾 שמור משימה</button>
     <button id="clear-all">🗑️ נקה הכול</button>
   </div>
+
+  <script>
+    const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
+    const today = (new Date().getDay() + 6) % 7;
+    if (today >= 0 && today <= 4) {
+      document.getElementById(`day-${today}`).classList.add("today");
+    }
+  </script>
 </body>
 </html>
