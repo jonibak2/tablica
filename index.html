@@ -75,7 +75,7 @@
             touchTimer = setTimeout(() => {
               const overlay = document.getElementById('task-overlay');
               const overlayContent = document.getElementById('task-overlay-content');
-              overlayContent.innerText = tooltip.innerText;
+              overlayContent.innerHTML = tooltip.innerText.split('\n').join('<br>');
               overlay.style.display = 'flex';
             }, 500);
           }
@@ -295,6 +295,8 @@
       font-size: 1.5em;
       text-align: center;
       border-radius: 8px;
+      white-space: pre-line;
+      line-height: 1.5;
     }
 
     @media (max-width: 600px) {
