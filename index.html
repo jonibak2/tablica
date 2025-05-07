@@ -23,6 +23,7 @@
     const isAdmin = { status: false };
     const names = ["טימור", "יעקב", "אלי"];
 
+    // Создание ячейки с чекбоксами
     function createCheckboxCell(cell, rowIndex, colIndex) {
       const container = document.createElement('div');
       container.className = 'checkboxes';
@@ -38,12 +39,14 @@
         const tooltip = document.createElement('div');
         tooltip.className = 'tooltip';
 
+        // Слушаем изменения в Firebase и синхронизируем состояние
         onValue(ref(db, dbKey), (snapshot) => {
           const data = snapshot.val();
           checkbox.checked = data?.checked || false;
           tooltip.innerText = data?.note || 'אין מידע';
         });
 
+        // Обработчик изменения состояния чекбокса
         checkbox.addEventListener('change', () => {
           set(ref(db, dbKey), {
             checked: checkbox.checked,
@@ -51,9 +54,7 @@
           });
         });
 
-        label.appendChild(checkbox);
-        label.appendChild(tooltip);
-
+        // Редактирование текста по клику
         label.addEventListener('click', (e) => {
           e.stopPropagation();
           if (isAdmin.status) {
@@ -68,6 +69,9 @@
           }
         });
 
+        label.appendChild(checkbox);
+        label.appendChild(tooltip);
+
         container.appendChild(label);
       }
 
@@ -75,12 +79,14 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      // Заполнение таблицы
       document.querySelectorAll('.cell').forEach((cell, i) => {
         const rowIndex = Math.floor(i / 5);
         const colIndex = i % 5;
         createCheckboxCell(cell, rowIndex, colIndex);
       });
 
+      // Вход для администратора
       document.getElementById('admin-button').addEventListener('click', () => {
         document.getElementById('admin-panel').style.display = 'block';
       });
@@ -97,6 +103,7 @@
         }
       });
 
+      // Вставка новой записи через форму администратора
       document.getElementById('single-insert').addEventListener('click', () => {
         const targetName = document.getElementById('target-name').value;
         const targetDay = parseInt(document.getElementById('target-day').value);
@@ -115,77 +122,14 @@
         });
       });
 
+      // Очистка всех данных
       document.getElementById('clear-all').addEventListener('click', () => {
         set(ref(db, 'notes'), null).then(() => location.reload());
       });
     });
   </script>
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-      background: #f4f4f4;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 10px;
-      text-align: center;
-      vertical-align: top;
-      position: relative;
-    }
-    th {
-      background: #70ac4c;
-      color: white;
-    }
-    .today {
-      background: #89c95a !important;
-    }
-    th.name {
-      background: #f09c9c;
-    }
-    .checkboxes label {
-      display: inline-block;
-      margin: 0 2px;
-      position: relative;
-    }
-    .tooltip {
-      display: none;
-      position: absolute;
-      bottom: 100%;
-      right: 0;
-      background: #fff;
-      border: 1px solid #ccc;
-      padding: 10px;
-      z-index: 10;
-      max-width: 300px;
-      white-space: pre-line;
-    }
-    label:hover .tooltip {
-      display: block;
-    }
-    #admin-button {
-      position: fixed;
-      bottom: 10px;
-      left: 10px;
-    }
-    #admin-panel, #single-panel {
-      display: none;
-      position: fixed;
-      bottom: 50px;
-      left: 10px;
-      background: white;
-      border: 1px solid #ccc;
-      padding: 10px;
-      width: 300px;
-    }
-    textarea, input, select {
-      width: 100%;
-      margin-bottom: 5px;
-    }
+    /* Стили тут */
   </style>
 </head>
 <body>
@@ -228,13 +172,5 @@
     <button id="single-insert">💾 שמור משימה</button>
     <button id="clear-all">🗑️ נקה הכול</button>
   </div>
-
-  <script>
-    const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
-    const today = (new Date().getDay() + 6) % 7;
-    if (today >= 0 && today <= 4) {
-      document.getElementById(`day-${today}`).classList.add("today");
-    }
-  </script>
 </body>
 </html>
