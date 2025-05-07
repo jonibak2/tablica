@@ -75,7 +75,8 @@
             touchTimer = setTimeout(() => {
               const overlay = document.getElementById('task-overlay');
               const overlayContent = document.getElementById('task-overlay-content');
-              overlayContent.innerHTML = tooltip.innerText.split('\n').join('<br>');
+              const lines = tooltip.innerText.split('\n').map(line => `<div>${line}</div>`).join('');
+              overlayContent.innerHTML = lines;
               overlay.style.display = 'flex';
             }, 500);
           }
@@ -296,7 +297,10 @@
       text-align: center;
       border-radius: 8px;
       white-space: pre-line;
-      line-height: 1.5;
+      line-height: 2;
+    }
+    #task-overlay-content div {
+      margin-bottom: 10px;
     }
 
     @media (max-width: 600px) {
