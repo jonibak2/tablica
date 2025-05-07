@@ -2,6 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>טבלת משימות</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -22,8 +23,8 @@
 
     const isAdmin = { status: false };
     const names = ["טימור", "יעקב", "אלי"];
+    const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
 
-    // Создание ячейки с чекбоксами
     function createCheckboxCell(cell, rowIndex, colIndex) {
       const container = document.createElement('div');
       container.className = 'checkboxes';
@@ -39,14 +40,12 @@
         const tooltip = document.createElement('div');
         tooltip.className = 'tooltip';
 
-        // Слушаем изменения в Firebase и синхронизируем состояние
         onValue(ref(db, dbKey), (snapshot) => {
           const data = snapshot.val();
           checkbox.checked = data?.checked || false;
           tooltip.innerText = data?.note || 'אין מידע';
         });
 
-        // Обработчик изменения состояния чекбокса
         checkbox.addEventListener('change', () => {
           set(ref(db, dbKey), {
             checked: checkbox.checked,
@@ -54,7 +53,6 @@
           });
         });
 
-        // Редактирование текста по клику
         label.addEventListener('click', (e) => {
           e.stopPropagation();
           if (isAdmin.status) {
@@ -64,14 +62,15 @@
               set(ref(db, dbKey), {
                 checked: checkbox.checked,
                 note: newText
-              });
+             
+
+ });
             }
           }
         });
 
         label.appendChild(checkbox);
         label.appendChild(tooltip);
-
         container.appendChild(label);
       }
 
@@ -79,14 +78,12 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      // Заполнение таблицы
       document.querySelectorAll('.cell').forEach((cell, i) => {
         const rowIndex = Math.floor(i / 5);
         const colIndex = i % 5;
         createCheckboxCell(cell, rowIndex, colIndex);
       });
 
-      // Вход для администратора
       document.getElementById('admin-button').addEventListener('click', () => {
         document.getElementById('admin-panel').style.display = 'block';
       });
@@ -103,7 +100,6 @@
         }
       });
 
-      // Вставка новой записи через форму администратора
       document.getElementById('single-insert').addEventListener('click', () => {
         const targetName = document.getElementById('target-name').value;
         const targetDay = parseInt(document.getElementById('target-day').value);
@@ -122,10 +118,30 @@
         });
       });
 
-      // Очистка всех данных
       document.getElementById('clear-all').addEventListener('click', () => {
         set(ref(db, 'notes'), null).then(() => location.reload());
       });
+
+      const today = (new Date().getDay() + 6) % 7;
+      const daySelect = document.getElementById('day-select');
+      if (today >= 0 && today <= 4) {
+        daySelect.value = today;
+      } else {
+        daySelect.value = 0;
+      }
+
+      function updateTableDisplay() {
+        const selectedDay = parseInt(daySelect.value);
+        const isMobile = window.matchMedia("(max-width: 600px)").matches;
+        document.querySelectorAll('th[id^="day-"], td.cell').forEach((el) => {
+          const colIndex = parseInt(el.id?.split('-')[1]) || Array.from(el.parentNode.children).indexOf(el) - 1;
+          el.style.display = isMobile && colIndex !== selectedDay ? 'none' : '';
+        });
+      }
+
+      daySelect.addEventListener('change', updateTableDisplay);
+      window.addEventListener('resize', updateTableDisplay);
+      updateTableDisplay();
     });
   </script>
   <style>
@@ -133,14 +149,21 @@
       font-family: sans-serif;
       padding: 20px;
       background: #f4f4f4;
+      margin: 0;
+    }
+    h1 {
+      font-size: 1.5em;
+      text-align: center;
     }
     table {
       border-collapse: collapse;
       width: 100%;
+      max-width: 100%;
+      margin: 10px 0;
     }
     th, td {
       border: 1px solid #ccc;
-      padding: 10px;
+      padding: 8px;
       text-align: center;
       vertical-align: top;
       position: relative;
@@ -167,18 +190,28 @@
       right: 0;
       background: #fff;
       border: 1px solid #ccc;
-      padding: 10px;
+      padding: 8px;
       z-index: 10;
-      max-width: 300px;
+      max-width: 200px;
       white-space: pre-line;
+      font-size: 0.9em;
     }
     label:hover .tooltip {
       display: block;
+    }
+    #day-select {
+      display: block;
+      margin: 10px auto;
+      padding: 5px;
+      font-size: 1em;
+      width: 200px;
     }
     #admin-button {
       position: fixed;
       bottom: 10px;
       left: 10px;
+      padding: 8px 12px;
+      font-size: 0.9em;
     }
     #admin-panel, #single-panel {
       display: none;
@@ -188,16 +221,82 @@
       background: white;
       border: 1px solid #ccc;
       padding: 10px;
-      width: 300px;
+      width: 280px;
+      max-width: 90%;
+      z-index: 100;
     }
     textarea, input, select {
       width: 100%;
+      margin-bottom: 8px;
+      padding: 5px;
+      font-size: 0.9em;
+    }
+    button {
+      padding: 8px;
+      font-size: 0.9em;
+      width: 100%;
       margin-bottom: 5px;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+      h1 {
+        font-size: 1.2em;
+      }
+      table {
+        font-size: 0.85em;
+      }
+      th, td {
+        padding: 5px;
+      }
+      .checkboxes label {
+        margin: 0 1px;
+      }
+      .tooltip {
+        max-width: 150px;
+        font-size: 0.8em;
+      }
+      #day-select {
+        width: 150px;
+        font-size: 0.9em;
+      }
+      #admin-button {
+        padding: 6px 10px;
+        font-size: 0.8em;
+      }
+      #admin-panel, #single-panel {
+        width: 90%;
+        left: 5%;
+        bottom: 40px;
+        padding: 8px;
+      }
+      textarea, input, select {
+        font-size: 0.85em;
+      }
+      button {
+        font-size: 0.85em;
+        padding: 6px;
+      }
+    }
+
+    @media (min-width: 601px) {
+      #day-select {
+        display: none;
+      }
     }
   </style>
 </head>
 <body>
   <h1>טבלת משימות</h1>
+  <select id="day-select">
+    <option value="0">ראשון</option>
+    <option value="1">שני</option>
+    <option value="2">שלישי</option>
+    <option value="3">רביעי</option>
+    <option value="4">חמישי</option>
+  </select>
   <table id="schedule-table">
     <thead>
       <tr>
@@ -230,19 +329,19 @@
         <option>אלי</option>
       </select>
     </label>
-    <label>יום (0-4): <input type="number" id="target-day" min="0" max="4"></label>
+    <label>יום:
+      <select id="target-day">
+        <option value="0">ראשון</option>
+        <option value="1">שני</option>
+        <option value="2">שלישי</option>
+        <option value="3">רביעי</option>
+        <option value="4">חמישי</option>
+      </select>
+    </label>
     <label>מספר משימה (1-6): <input type="number" id="target-number" min="1" max="6"></label>
     <textarea id="single-note" placeholder="כתוב כאן את ההערה"></textarea>
     <button id="single-insert">💾 שמור משימה</button>
     <button id="clear-all">🗑️ נקה הכול</button>
   </div>
-
-  <script>
-    const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
-    const today = (new Date().getDay() + 6) % 7;
-    if (today >= 0 && today <= 4) {
-      document.getElementById(`day-${today}`).classList.add("today");
-    }
-  </script>
 </body>
 </html>
