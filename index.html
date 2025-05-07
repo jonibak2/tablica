@@ -67,6 +67,24 @@
           }
         });
 
+        // Long press for mobile
+        let touchTimer;
+        label.addEventListener('touchstart', (e) => {
+          if (window.matchMedia("(max-width: 600px)").matches) {
+            e.preventDefault();
+            touchTimer = setTimeout(() => {
+              const overlay = document.getElementById('task-overlay');
+              const overlayContent = document.getElementById('task-overlay-content');
+              overlayContent.innerText = tooltip.innerText;
+              overlay.style.display = 'flex';
+            }, 500);
+          }
+        });
+
+        label.addEventListener('touchend', () => {
+          clearTimeout(touchTimer);
+        });
+
         label.appendChild(checkbox);
         label.appendChild(tooltip);
         container.appendChild(label);
@@ -156,6 +174,11 @@
       daySelect.addEventListener('change', updateTableDisplay);
       window.addEventListener('resize', updateTableDisplay);
       updateTableDisplay();
+
+      // Close overlay on click
+      document.getElementById('task-overlay').addEventListener('click', () => {
+        document.getElementById('task-overlay').style.display = 'none';
+      });
     });
   </script>
   <style>
@@ -187,7 +210,7 @@
       color: white;
     }
     .today {
-      background: #6ab834 !important;
+      background: #5ca026 !important;
     }
     th.name {
       background: #f09c9c;
@@ -250,6 +273,28 @@
       font-size: 0.9em;
       width: 100%;
       margin-bottom: 5px;
+    }
+    #task-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 200;
+      justify-content: center;
+      align-items: center;
+    }
+    #task-overlay-content {
+      background: #fff;
+      padding: 20px;
+      max-width: 90%;
+      max-height: 80%;
+      overflow-y: auto;
+      font-size: 1.5em;
+      text-align: center;
+      border-radius: 8px;
     }
 
     @media (max-width: 600px) {
@@ -323,8 +368,7 @@
       </tr>
     </thead>
     <tbody>
-      <tr><td>טימור</td><td class=" 兴
-cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
+      <tr><td>טימור</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
       <tr><td>יעקב</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
       <tr><td>אלי</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
     </tbody>
@@ -366,6 +410,10 @@ cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td
     <textarea id="single-note" placeholder="כתוב כאן את ההערה"></textarea>
     <button id="single-insert">💾 שמור משימה</button>
     <button id="clear-all">🗑️ נקה הכול</button>
+  </div>
+
+  <div id="task-overlay">
+    <div id="task-overlay-content"></div>
   </div>
 </body>
 </html>
