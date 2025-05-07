@@ -95,27 +95,27 @@
           isAdmin.status = true;
           alert('הכניסה בוצעה בהצלחה!');
           document.getElementById('admin-panel').style.display = 'none';
-          document.getElementById('bulk-panel').style.display = 'block';
+          document.getElementById('single-panel').style.display = 'block';
         } else {
           alert('קוד שגוי!');
         }
       });
 
-      document.getElementById('bulk-insert').addEventListener('click', () => {
+      document.getElementById('single-insert').addEventListener('click', () => {
         const targetName = document.getElementById('target-name').value;
         const targetDay = parseInt(document.getElementById('target-day').value);
-        const raw = document.getElementById('bulk-input').value;
-        const sections = raw.split('-------------------------------').map(s => s.trim()).filter(Boolean);
+        const targetNumber = parseInt(document.getElementById('target-number').value);
+        const noteText = document.getElementById('single-note').value;
 
         const rowIndex = names.indexOf(targetName);
-        if (rowIndex === -1 || isNaN(targetDay)) return alert("נתונים לא תקינים");
+        if (rowIndex === -1 || isNaN(targetDay) || isNaN(targetNumber) || !noteText.trim()) {
+          return alert("נתונים לא תקינים");
+        }
 
-        sections.forEach((section, index) => {
-          const dbKey = `notes/${rowIndex}/${targetDay}/${index + 1}`;
-          set(ref(db, dbKey), {
-            checked: false,
-            note: section.trim()
-          });
+        const dbKey = `notes/${rowIndex}/${targetDay}/${targetNumber}`;
+        set(ref(db, dbKey), {
+          checked: false,
+          note: noteText.trim()
         });
       });
 
@@ -176,7 +176,7 @@
       bottom: 10px;
       left: 10px;
     }
-    #admin-panel, #bulk-panel {
+    #admin-panel, #single-panel {
       display: none;
       position: fixed;
       bottom: 50px;
@@ -186,9 +186,9 @@
       padding: 10px;
       width: 300px;
     }
-    textarea {
+    textarea, input, select {
       width: 100%;
-      height: 200px;
+      margin-bottom: 5px;
     }
   </style>
 </head>
@@ -218,7 +218,7 @@
     <button id="admin-confirm">אישור</button>
   </div>
 
-  <div id="bulk-panel">
+  <div id="single-panel">
     <label>שם:
       <select id="target-name">
         <option>טימור</option>
@@ -227,4 +227,18 @@
       </select>
     </label>
     <label>יום (0-4): <input type="number" id="target-day" min="0" max="4"></label>
-    <textarea id="bulk-input" placeholder="1.\nכתובת: תל אביב\nקוד: 2552\nסיבה: זמזם\n-------------------------------\n
+    <label>מספר משימה (1-6): <input type="number" id="target-number" min="1" max="6"></label>
+    <textarea id="single-note" placeholder="כתוב כאן את ההערה"></textarea>
+    <button id="single-insert">💾 שמור משימה</button>
+    <button id="clear-all">🗑️ נקה הכול</button>
+  </div>
+
+  <script>
+    const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
+    const today = (new Date().getDay() + 6) % 7;
+    if (today >= 0 && today <= 4) {
+      document.getElementById(`day-${today}`).classList.add("today");
+    }
+  </script>
+</body>
+</html>
