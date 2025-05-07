@@ -2,61 +2,34 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
   <title>טבלת בדיקה</title>
   <style>
     body {
       font-family: sans-serif;
-      padding: 10px;
-      margin: 0;
-      font-size: 14px;
-    }
-    h1 {
-      font-size: 1.5em;
-      margin-bottom: 10px;
+      padding: 20px;
     }
     table {
       border-collapse: collapse;
       width: 100%;
-      max-width: 100%;
-      overflow-x: auto;
-      display: block;
     }
     th, td {
       border: 1px solid #ccc;
-      padding: 8px;
+      padding: 10px;
       text-align: center;
       vertical-align: top;
       position: relative;
-      min-width: 60px;
     }
-    th.day {
-      background-color: #e0f0d6;
-      color: #70ac4c;
-      font-size: 0.9em;
+    th {
+      background-color: #70ac4c;
+      color: white;
     }
-    th.day.today {
-      background-color: #c8e8b5;
-      color: #89cc6d;
-    }
-    th.name {
-      background-color: #fce3e3;
-      color: #f09c9c;
-      font-size: 0.9em;
+    .today {
+      background-color: #8bc34a !important;
     }
     .checkboxes label {
       display: inline-block;
-      margin: 0 4px;
+      margin: 0 2px;
       position: relative;
-      padding: 8px;
-    }
-    .checkboxes input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      vertical-align: middle;
     }
     .tooltip {
       display: none;
@@ -65,88 +38,35 @@
       right: 0;
       background: #fff;
       border: 1px solid #ccc;
-      padding: 8px;
+      padding: 10px;
       z-index: 10;
-      max-width: 250px;
-      white-space: pre-wrap;
-      font-size: 0.85em;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      max-width: 300px;
+      white-space: pre-line;
+      text-align: right;
     }
-    .checkboxes label:hover .tooltip {
-      display: block;
-    }
-    .tooltip.active {
+    label:hover .tooltip {
       display: block;
     }
     #admin-button {
       position: fixed;
       bottom: 10px;
-      right: 10px;
-      padding: 10px 15px;
-      font-size: 1em;
-      background: #007bff;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
+      left: 10px;
     }
     #admin-panel {
       display: none;
       position: fixed;
-      bottom: 50px;
-      right: 10px;
+      bottom: 40px;
+      left: 10px;
       background: white;
       border: 1px solid #ccc;
       padding: 10px;
-      width: 90%;
-      max-width: 300px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      z-index: 100;
     }
-    #admin-panel input, #admin-panel button, #admin-panel select, #admin-panel textarea {
-      font-size: 0.9em;
+    .name-header {
+      background-color: #f09c9c !important;
     }
-    textarea {
+    select, textarea {
+      margin-top: 5px;
       width: 100%;
-      height: 100px;
-      margin-top: 5px;
-    }
-    select {
-      width: 100%;
-      margin-top: 5px;
-    }
-    #bulk-entry button {
-      margin-top: 5px;
-      padding: 8px;
-      width: 48%;
-    }
-    @media (max-width: 600px) {
-      body {
-        font-size: 12px;
-      }
-      th, td {
-        padding: 6px;
-        min-width: 50px;
-      }
-      .checkboxes label {
-        padding: 6px;
-      }
-      .checkboxes input[type="checkbox"] {
-        width: 16px;
-        height: 16px;
-      }
-      .tooltip {
-        max-width: 200px;
-        font-size: 0.8em;
-      }
-      #admin-button {
-        padding: 8px 12px;
-        font-size: 0.9em;
-      }
-      #admin-panel {
-        bottom: 40px;
-        width: 95%;
-      }
     }
   </style>
 </head>
@@ -155,42 +75,61 @@
   <table id="schedule-table">
     <thead>
       <tr>
-        <th class="name">שם</th>
-        <th class="day" data-day="0"></th>
-        <th class="day" data-day="1"></th>
-        <th class="day" data-day="2"></th>
-        <th class="day" data-day="3"></th>
-        <th class="day" data-day="4"></th>
+        <th class="name-header">שם</th>
+        <th id="day-0"></th>
+        <th id="day-1"></th>
+        <th id="day-2"></th>
+        <th id="day-3"></th>
+        <th id="day-4"></th>
       </tr>
     </thead>
     <tbody>
-      <tr><td>תימור</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
-      <tr><td>יקוב</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
-      <tr><td>אלי</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
+      <tr>
+        <td>טימור</td>
+        <td class="cell"></td>
+        <td class="cell"></td>
+        <td class="cell"></td>
+        <td class="cell"></td>
+        <td class="cell"></td>
+      </tr>
+      <tr>
+        <td>יעקב</td>
+        <td class="cell"></td>
+        <td class="cell"></td>
+        <td class="cell"></td>
+        <td class="cell"></td>
+        <td class="cell"></td>
+      </tr>
+      <tr>
+        <td>אלי</td>
+        <td class="cell"></td>
+        <td class="cell"></td>
+        <td class="cell"></td>
+        <td class="cell"></td>
+        <td class="cell"></td>
+      </tr>
     </tbody>
   </table>
 
   <button id="admin-button">🔒 כניסת מנהל</button>
   <div id="admin-panel">
     <label>קוד גישה: <input type="password" id="admin-code"></label>
-    <button onclick="checkAdminCode()">אישור</button>
-    <div id="bulk-entry" style="display:none">
-      <textarea id="bulk-text" placeholder="הכנס טקסט בקבוצות..."></textarea>
-      <select id="target-user">
-        <option value="0">תימור</option>
-        <option value="1">יקוב</option>
-        <option value="2">אלי</option>
-      </select>
-      <select id="target-day">
-        <option value="0">ראשון</option>
-        <option value="1">שני</option>
-        <option value="2">שלישי</option>
-        <option value="3">רביעי</option>
-        <option value="4">חמישי</option>
-      </select>
-      <button onclick="fillTooltips()">מלא</button>
-      <button onclick="clearAllData()">Очистить все</button>
-    </div>
+    <button onclick="checkAdminCode()">אישור</button><br>
+    <select id="admin-row">
+      <option value="0">טימור</option>
+      <option value="1">יעקב</option>
+      <option value="2">אלי</option>
+    </select>
+    <select id="admin-col">
+      <option value="0">ראשון</option>
+      <option value="1">שני</option>
+      <option value="2">שלישי</option>
+      <option value="3">רביעי</option>
+      <option value="4">חמישי</option>
+    </select>
+    <textarea id="bulk-tooltip" rows="12" placeholder="הדבק כאן את הטקסט..."></textarea>
+    <button onclick="applyBulkTooltip()">החל טקסט</button>
+    <button onclick="clearAll()">נקה הכל</button>
   </div>
 
   <script>
@@ -220,24 +159,14 @@
         label.appendChild(tooltip);
 
         label.addEventListener('click', (e) => {
+          e.stopPropagation();
           if (isAdmin.status) {
             e.preventDefault();
-            e.stopPropagation();
             const newText = prompt('ערוך מידע עבור תיבה זו:', tooltip.innerText);
             if (newText !== null) {
               tooltip.innerText = newText;
               localStorage.setItem(`tooltip-${rowIndex}-${colIndex}-${i}`, newText);
             }
-          }
-        });
-
-        label.addEventListener('touchstart', (e) => {
-          if (!isAdmin.status) {
-            e.preventDefault();
-            tooltip.classList.add('active');
-            setTimeout(() => {
-              tooltip.classList.remove('active');
-            }, 3000);
           }
         });
 
@@ -256,9 +185,8 @@
     const adminBtn = document.getElementById('admin-button');
     const adminPanel = document.getElementById('admin-panel');
 
-    adminBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      adminPanel.style.display = adminPanel.style.display === 'block' ? 'none' : 'block';
+    adminBtn.addEventListener('click', () => {
+      adminPanel.style.display = 'block';
     });
 
     function checkAdminCode() {
@@ -266,67 +194,53 @@
       if (code === '1111') {
         isAdmin.status = true;
         alert('הכניסה בוצעה בהצלחה!');
-        document.getElementById('bulk-entry').style.display = 'block';
+        adminPanel.style.display = 'block';
       } else {
         alert('קוד שגוי!');
       }
     }
 
-    function fillTooltips() {
-      const rawText = document.getElementById('bulk-text').value;
-      const userIndex = parseInt(document.getElementById('target-user').value);
-      const dayIndex = parseInt(document.getElementById('target-day').value);
-
-      const blocks = rawText.split(/-+\s*/).filter(Boolean);
+    function applyBulkTooltip() {
+      const text = document.getElementById('bulk-tooltip').value;
+      const row = parseInt(document.getElementById('admin-row').value);
+      const col = parseInt(document.getElementById('admin-col').value);
+      const blocks = text.split(/\-+/).map(t => t.trim()).filter(t => t);
 
       blocks.forEach((block, i) => {
-        const tooltipText = block.trim();
-        const tooltipKey = `tooltip-${userIndex}-${dayIndex}-${i+1}`;
-        localStorage.setItem(tooltipKey, tooltipText);
+        const tooltipKey = `tooltip-${row}-${col}-${i + 1}`;
+        localStorage.setItem(tooltipKey, block);
 
-        const cell = document.querySelectorAll('tbody tr')[userIndex].querySelectorAll('.cell')[dayIndex];
-        const labels = cell.querySelectorAll('label');
-        if (labels[i]) {
-          labels[i].querySelector('.tooltip').innerText = tooltipText;
+        const checkbox = document.querySelector(`.cell:nth-child(${col + 2})`).parentNode.children[row + 1].children[col + 1].querySelectorAll('label')[i];
+        if (checkbox) {
+          checkbox.querySelector('.tooltip').innerText = block;
         }
       });
     }
 
-    function clearAllData() {
-      if (confirm('האם אתה בטוח שברצונך למחוק את כל הנתונים?')) {
-        Object.keys(localStorage).forEach((key) => {
-          if (key.startsWith('checkbox-') || key.startsWith('tooltip-')) {
-            localStorage.removeItem(key);
+    function clearAll() {
+      if (!confirm('האם אתה בטוח שברצונך לנקות הכל?')) return;
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 5; j++) {
+          for (let k = 1; k <= 6; k++) {
+            localStorage.removeItem(`checkbox-${i}-${j}-${k}`);
+            localStorage.removeItem(`tooltip-${i}-${j}-${k}`);
           }
-        });
-
-        document.querySelectorAll('.cell').forEach((cell, i) => {
-          const rowIndex = Math.floor(i / 5);
-          const colIndex = i % 5;
-          cell.innerHTML = '';
-          createCheckboxCell(cell, rowIndex, colIndex);
-        });
-
-        alert('כל הנתונים נמחקו!');
+        }
       }
+      location.reload();
     }
 
-    // Установка заголовков дней с датами
-    const dayHeaders = document.querySelectorAll('th.day');
-    const now = new Date();
     const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי'];
-
-    dayHeaders.forEach((th, i) => {
-      const d = new Date();
-      d.setDate(now.getDate() - now.getDay() + 1 + i);
-      const day = d.getDate();
-      const month = d.getMonth() + 1;
-      th.innerText = `${days[i]}\n${day}.${month}`;
-
-      if (d.toDateString() === now.toDateString()) {
-        th.classList.add('today');
-      }
-    });
+    const today = new Date();
+    const todayIndex = (today.getDay() + 6) % 7;
+    for (let i = 0; i < 5; i++) {
+      const date = new Date();
+      date.setDate(today.getDate() - todayIndex + i);
+      const str = `${days[i]}<br>${date.getDate()}.${date.getMonth() + 1}`;
+      const th = document.getElementById(`day-${i}`);
+      th.innerHTML = str;
+      if (i === todayIndex) th.classList.add('today');
+    }
   </script>
 </body>
 </html>
