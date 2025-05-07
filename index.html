@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>טבלת בדיקה</title>
   <style>
     body {
@@ -186,11 +189,29 @@
         <option value="4">חמישי</option>
       </select>
       <button onclick="fillTooltips()">מלא</button>
-      <button onclick="clearAllData()">נקה</button>
+      <button onclick="clearAllData()">Очистить все</button>
     </div>
   </div>
 
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js"></script>
+
   <script>
+    // Инициализация Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6yrRs9vnH-YG1LyoUL_Nx4zCltXSG_Ic",
+      authDomain: "pgtest78.firebaseapp.com",
+      databaseURL: "https://pgtest78-default-rtdb.firebaseio.com",
+      projectId: "pgtest78",
+      storageBucket: "pgtest78.firebasestorage.app",
+      messagingSenderId: "776055100451",
+      appId: "1:776055100451:web:9fc6cda8cbb315e48b4d96",
+      measurementId: "G-49YZYMQ9C9"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
     const isAdmin = { status: false };
 
     function createCheckboxCell(cell, rowIndex, colIndex) {
@@ -204,14 +225,29 @@
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         const key = `checkbox-${rowIndex}-${colIndex}-${i}`;
-        checkbox.checked = localStorage.getItem(key) === 'true';
+        const tooltipKey = `tooltip-${rowIndex}-${colIndex}-${i}`;
+
+        // Загрузка начального состояния чекбокса
+        database.ref(key).once('value', (snapshot) => {
+          checkbox.checked = snapshot.val() === true;
+        });
+
         checkbox.addEventListener('change', () => {
-          localStorage.setItem(key, checkbox.checked);
+          database.ref(key).set(checkbox.checked);
         });
 
         const tooltip = document.createElement('div');
         tooltip.className = 'tooltip';
-        tooltip.innerText = localStorage.getItem(`tooltip-${rowIndex}-${colIndex}-${i}`) || 'אין מידע';
+
+        // Загрузка начального текста тултипа
+        database.ref(tooltipKey).once('value', (snapshot) => {
+          tooltip.innerText = snapshot.val() || 'אין מידע';
+        });
+
+        // Подписка на изменения тултипа
+        database.ref(tooltipKey).on('value', (snapshot) => {
+          tooltip.innerText = snapshot.val() || 'אין מידע';
+        });
 
         label.appendChild(checkbox);
         label.appendChild(tooltip);
@@ -224,7 +260,7 @@
             const newText = prompt('ערוך מידע עבור תיבה זו:', tooltip.innerText);
             if (newText !== null) {
               tooltip.innerText = newText;
-              localStorage.setItem(`tooltip-${rowIndex}-${colIndex}-${i}`, newText);
+              database.ref(tooltipKey).set(newText);
             }
           }
         });
@@ -280,7 +316,7 @@
       blocks.forEach((block, i) => {
         const tooltipText = block.trim();
         const tooltipKey = `tooltip-${userIndex}-${dayIndex}-${i+1}`;
-        localStorage.setItem(tooltipKey, tooltipText);
+        database.ref(tooltipKey).set(tooltipText);
 
         const cell = document.querySelectorAll('tbody tr')[userIndex].querySelectorAll('.cell')[dayIndex];
         const labels = cell.querySelectorAll('label');
@@ -292,20 +328,15 @@
 
     function clearAllData() {
       if (confirm('האם אתה בטוח שברצונך למחוק את כל הנתונים?')) {
-        Object.keys(localStorage).forEach((key) => {
-          if (key.startsWith('checkbox-') || key.startsWith('tooltip-')) {
-            localStorage.removeItem(key);
-          }
+        database.ref().remove().then(() => {
+          document.querySelectorAll('.cell').forEach((cell, i) => {
+            const rowIndex = Math.floor(i / 5);
+            const colIndex = i % 5;
+            cell.innerHTML = '';
+            createCheckboxCell(cell, rowIndex, colIndex);
+          });
+          alert('כל הנתונים נמחקו!');
         });
-
-        document.querySelectorAll('.cell').forEach((cell, i) => {
-          const rowIndex = Math.floor(i / 5);
-          const colIndex = i % 5;
-          cell.innerHTML = '';
-          createCheckboxCell(cell, rowIndex, colIndex);
-        });
-
-        alert('כל הנתונים נמחקו!');
       }
     }
 
