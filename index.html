@@ -62,9 +62,7 @@
               set(ref(db, dbKey), {
                 checked: checkbox.checked,
                 note: newText
-             
-
- });
+              });
             }
           }
         });
@@ -122,7 +120,23 @@
         set(ref(db, 'notes'), null).then(() => location.reload());
       });
 
+      // Set dates for each day and highlight today
       const today = (new Date().getDay() + 6) % 7;
+      const now = new Date();
+      const sunday = new Date(now);
+      sunday.setDate(now.getDate() - now.getDay());
+      for (let i = 0; i < 5; i++) {
+        const date = new Date(sunday);
+        date.setDate(sunday.getDate() + i);
+        const dd = String(date.getDate()).padStart(2, '0');
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const th = document.getElementById(`day-${i}`);
+        th.innerText = `${dayNames[i]} ${dd}.${mm}`;
+        if (i === today && today <= 4) {
+          th.classList.add('today');
+        }
+      }
+
       const daySelect = document.getElementById('day-select');
       if (today >= 0 && today <= 4) {
         daySelect.value = today;
@@ -173,7 +187,7 @@
       color: white;
     }
     .today {
-      background: #89c95a !important;
+      background: #6ab834 !important;
     }
     th.name {
       background: #f09c9c;
@@ -309,7 +323,8 @@
       </tr>
     </thead>
     <tbody>
-      <tr><td>טימור</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
+      <tr><td>טימור</td><td class=" 兴
+cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
       <tr><td>יעקב</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
       <tr><td>אלי</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
     </tbody>
@@ -338,7 +353,16 @@
         <option value="4">חמישי</option>
       </select>
     </label>
-    <label>מספר משימה (1-6): <input type="number" id="target-number" min="1" max="6"></label>
+    <label>מספר משימה:
+      <select id="target-number">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+      </select>
+    </label>
     <textarea id="single-note" placeholder="כתוב כאן את ההערה"></textarea>
     <button id="single-insert">💾 שמור משימה</button>
     <button id="clear-all">🗑️ נקה הכול</button>
