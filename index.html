@@ -193,190 +193,140 @@
     </div>
   </div>
 
-  <!-- Firebase SDK (обновленная версия) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js"></script>
-
   <script>
-    // Проверка загрузки Firebase
-    if (typeof firebase === 'undefined') {
-      console.error('Firebase SDK не загрузился. Проверьте подключение к интернету или CDN.');
-      alert('Ошибка загрузки Firebase. Проверьте консоль браузера.');
-    } else {
-      // Инициализация Firebase
-      const firebaseConfig = {
-        apiKey: "AIzaSyD6yrRs9vnH-YG1LyoUL_Nx4zCltXSG_Ic",
-        authDomain: "pgtest78.firebaseapp.com",
-        databaseURL: "https://pgtest78-default-rtdb.firebaseio.com",
-        projectId: "pgtest78",
-        storageBucket: "pgtest78.firebasestorage.app",
-        messagingSenderId: "776055100451",
-        appId: "1:776055100451:web:9fc6cda8cbb315e48b4d96",
-        measurementId: "G-49YZYMQ9C9"
-      };
-      firebase.initializeApp(firebaseConfig);
-      const database = firebase.database();
+    const isAdmin = { status: false };
 
-      const isAdmin = { status: false };
+    function createCheckboxCell(cell, rowIndex, colIndex) {
+      const container = document.createElement('div');
+      container.className = 'checkboxes';
 
-      function createCheckboxCell(cell, rowIndex, colIndex) {
-        const container = document.createElement('div');
-        container.className = 'checkboxes';
+      for (let i = 1; i <= 6; i++) {
+        const label = document.createElement('label');
+        label.innerText = i;
 
-        for (let i = 1; i <= 6; i++) {
-          const label = document.createElement('label');
-          label.innerText = i;
-
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          const key = `checkbox-${rowIndex}-${colIndex}-${i}`;
-          const tooltipKey = `tooltip-${rowIndex}-${colIndex}-${i}`;
-
-          // Загрузка начального состояния чекбокса
-          database.ref(key).once('value', (snapshot) => {
-            checkbox.checked = snapshot.val() === true;
-          });
-
-          checkbox.addEventListener('change', () => {
-            database.ref(key).set(checkbox.checked).catch((error) => {
-              console.error('Ошибка записи в Firebase:', error);
-            });
-          });
-
-          const tooltip = document.createElement('div');
-          tooltip.className = 'tooltip';
-
-          // Загрузка начального текста тултипа
-          database.ref(tooltipKey).once('value', (snapshot) => {
-            tooltip.innerText = snapshot.val() || 'אין מידע';
-          });
-
-          // Подписка на изменения тултипа
-          database.ref(tooltipKey).on('value', (snapshot) => {
-            tooltip.innerText = snapshot.val() || 'אין מידע';
-          });
-
-          label.appendChild(checkbox);
-          label.appendChild(tooltip);
-
-          // Поддержка редактирования для админов
-          label.addEventListener('click', (e) => {
-            if (isAdmin.status) {
-              e.preventDefault();
-              e.stopPropagation();
-              const newText = prompt('ערוך מידע עבור תיבה זו:', tooltip.innerText);
-              if (newText !== null) {
-                tooltip.innerText = newText;
-                database.ref(tooltipKey).set(newText).catch((error) => {
-                  console.error('Ошибка записи в Firebase:', error);
-                });
-              }
-            }
-          });
-
-          // Поддержка тултипов на сенсорных устройствах
-          label.addEventListener('touchstart', (e) => {
-            if (!isAdmin.status) {
-              e.preventDefault();
-              tooltip.classList.add('active');
-              setTimeout(() => {
-                tooltip.classList.remove('active');
-              }, 3000);
-            }
-          });
-
-          container.appendChild(label);
-        }
-
-        cell.appendChild(container);
-      }
-
-      // Инициализация всех ячеек с чекбоксами
-      document.querySelectorAll('.cell').forEach((cell, i) => {
-        const rowIndex = Math.floor(i / 5);
-        const colIndex = i % 5;
-        createCheckboxCell(cell, rowIndex, colIndex);
-      });
-
-      // Настройка кнопки админки
-      const adminBtn = document.getElementById('admin-button');
-      const adminPanel = document.getElementById('admin-panel');
-
-      if (adminBtn && adminPanel) {
-        adminBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          adminPanel.style.display = adminPanel.style.display === 'block' ? 'none' : 'block';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        const key = `checkbox-${rowIndex}-${colIndex}-${i}`;
+        checkbox.checked = localStorage.getItem(key) === 'true';
+        checkbox.addEventListener('change', () => {
+          localStorage.setItem(key, checkbox.checked);
         });
-      } else {
-        console.error('Кнопка админки или панель не найдены');
-      }
 
-      function checkAdminCode() {
-        const code = document.getElementById('admin-code').value;
-        if (code === '1111') {
-          isAdmin.status = true;
-          alert('הכניסה בוצעה בהצלחה!');
-          document.getElementById('bulk-entry').style.display = 'block';
-        } else {
-          alert('קוד שגוי!');
-        }
-      }
+        const tooltip = document.createElement('div');
+        tooltip.className = 'tooltip';
+        tooltip.innerText = localStorage.getItem(`tooltip-${rowIndex}-${colIndex}-${i}`) || 'אין מידע';
 
-      function fillTooltips() {
-        const rawText = document.getElementById('bulk-text').value;
-        const userIndex = parseInt(document.getElementById('target-user').value);
-        const dayIndex = parseInt(document.getElementById('target-day').value);
+        label.appendChild(checkbox);
+        label.appendChild(tooltip);
 
-        const blocks = rawText.split(/-+\s*/).filter(Boolean);
-
-        blocks.forEach((block, i) => {
-          const tooltipText = block.trim();
-          const tooltipKey = `tooltip-${userIndex}-${dayIndex}-${i+1}`;
-          database.ref(tooltipKey).set(tooltipText).catch((error) => {
-            console.error('Ошибка записи в Firebase:', error);
-          });
-
-          const cell = document.querySelectorAll('tbody tr')[userIndex].querySelectorAll('.cell')[dayIndex];
-          const labels = cell.querySelectorAll('label');
-          if (labels[i]) {
-            labels[i].querySelector('.tooltip').innerText = tooltipText;
+        label.addEventListener('click', (e) => {
+          if (isAdmin.status) {
+            e.preventDefault();
+            e.stopPropagation();
+            const newText = prompt('ערוך מידע עבור תיבה זו:', tooltip.innerText);
+            if (newText !== null) {
+              tooltip.innerText = newText;
+              localStorage.setItem(`tooltip-${rowIndex}-${colIndex}-${i}`, newText);
+            }
           }
         });
+
+        label.addEventListener('touchstart', (e) => {
+          if (!isAdmin.status) {
+            e.preventDefault();
+            tooltip.classList.add('active');
+            setTimeout(() => {
+              tooltip.classList.remove('active');
+            }, 3000);
+          }
+        });
+
+        container.appendChild(label);
       }
 
-      function clearAllData() {
-        if (confirm('האם אתה בטוח שברצונך למחוק את כל הנתונים?')) {
-          database.ref().remove().then(() => {
-            document.querySelectorAll('.cell').forEach((cell, i) => {
-              const rowIndex = Math.floor(i / 5);
-              const colIndex = i % 5;
-              cell.innerHTML = '';
-              createCheckboxCell(cell, rowIndex, colIndex);
-            });
-            alert('כל הנתונים נמחקו!');
-          }).catch((error) => {
-            console.error('Ошибка очистки Firebase:', error);
-          });
-        }
+      cell.appendChild(container);
+    }
+
+    document.querySelectorAll('.cell').forEach((cell, i) => {
+      const rowIndex = Math.floor(i / 5);
+      const colIndex = i % 5;
+      createCheckboxCell(cell, rowIndex, colIndex);
+    });
+
+    const adminBtn = document.getElementById('admin-button');
+    const adminPanel = document.getElementById('admin-panel');
+
+    adminBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      adminPanel.style.display = adminPanel.style.display === 'block' ? 'none' : 'block';
+    });
+
+    function checkAdminCode() {
+      const code = document.getElementById('admin-code').value;
+      if (code === '1111') {
+        isAdmin.status = true;
+        alert('הכניסה בוצעה בהצלחה!');
+        document.getElementById('bulk-entry').style.display = 'block';
+      } else {
+        alert('קוד שגוי!');
       }
+    }
 
-      // Установка заголовков дней с датами
-      const dayHeaders = document.querySelectorAll('th.day');
-      const now = new Date();
-      const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי'];
+    function fillTooltips() {
+      const rawText = document.getElementById('bulk-text').value;
+      const userIndex = parseInt(document.getElementById('target-user').value);
+      const dayIndex = parseInt(document.getElementById('target-day').value);
 
-      dayHeaders.forEach((th, i) => {
-        const d = new Date();
-        d.setDate(now.getDate() - now.getDay() + 1 + i);
-        const day = d.getDate();
-        const month = d.getMonth() + 1;
-        th.innerText = `${days[i]}\n${day}.${month}`;
+      const blocks = rawText.split(/-+\s*/).filter(Boolean);
 
-        if (d.toDateString() === now.toDateString()) {
-          th.classList.add('today');
+      blocks.forEach((block, i) => {
+        const tooltipText = block.trim();
+        const tooltipKey = `tooltip-${userIndex}-${dayIndex}-${i+1}`;
+        localStorage.setItem(tooltipKey, tooltipText);
+
+        const cell = document.querySelectorAll('tbody tr')[userIndex].querySelectorAll('.cell')[dayIndex];
+        const labels = cell.querySelectorAll('label');
+        if (labels[i]) {
+          labels[i].querySelector('.tooltip').innerText = tooltipText;
         }
       });
     }
+
+    function clearAllData() {
+      if (confirm('האם אתה בטוח שברצונך למחוק את כל הנתונים?')) {
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith('checkbox-') || key.startsWith('tooltip-')) {
+            localStorage.removeItem(key);
+          }
+        });
+
+        document.querySelectorAll('.cell').forEach((cell, i) => {
+          const rowIndex = Math.floor(i / 5);
+          const colIndex = i % 5;
+          cell.innerHTML = '';
+          createCheckboxCell(cell, rowIndex, colIndex);
+        });
+
+        alert('כל הנתונים נמחקו!');
+      }
+    }
+
+    // Установка заголовков дней с датами
+    const dayHeaders = document.querySelectorAll('th.day');
+    const now = new Date();
+    const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי'];
+
+    dayHeaders.forEach((th, i) => {
+      const d = new Date();
+      d.setDate(now.getDate() - now.getDay() + 1 + i);
+      const day = d.getDate();
+      const month = d.getMonth() + 1;
+      th.innerText = `${days[i]}\n${day}.${month}`;
+
+      if (d.toDateString() === now.toDateString()) {
+        th.classList.add('today');
+      }
+    });
   </script>
 </body>
 </html>
