@@ -32,6 +32,7 @@
       for (let i = 1; i <= 6; i++) {
         const label = document.createElement('label');
         label.innerText = i;
+        label.className = 'no-task';
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
@@ -44,6 +45,13 @@
           const data = snapshot.val();
           checkbox.checked = data?.checked || false;
           tooltip.innerText = data?.note || 'אין מידע';
+          if (checkbox.checked) {
+            label.className = 'completed';
+          } else if (data?.note && data.note !== 'אין מידע') {
+            label.className = 'has-task';
+          } else {
+            label.className = 'no-task';
+          }
         });
 
         checkbox.addEventListener('change', () => {
@@ -54,8 +62,8 @@
         });
 
         label.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (isAdmin.status) {
+          if (isAdmin.status && e.target !== checkbox) {
+            e.stopPropagation();
             const newText = prompt('ערוך מידע עבור תיבה זו:', tooltip.innerText);
             if (newText !== null) {
               tooltip.innerText = newText;
@@ -70,17 +78,18 @@
         // Long press for mobile and PC
         let touchTimer;
         label.addEventListener('touchstart', (e) => {
-          e.preventDefault();
-          touchTimer = setTimeout(() => {
-            const overlay = document.getElementById('task-overlay');
-            const overlayContent = document.getElementById('task-overlay-content');
-            let lines = tooltip.innerText.split(/[\r\n]+/);
-            if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
-              lines = tooltip.innerText.split(/(?=כתובת:|קוד:|סיבה:)/).filter(line => line.trim());
-            }
-            overlayContent.innerHTML = lines.map(line => `<p>${line.trim()}</p>`).join('');
-            overlay.style.display = 'flex';
-          }, 500);
+          if (e.target !== checkbox) {
+            touchTimer = setTimeout(() => {
+              const overlay = document.getElementById('task-overlay');
+              const overlayContent = document.getElementById('task-overlay-content');
+              let lines = tooltip.innerText.split(/[\r\n]+/);
+              if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
+                lines = tooltip.innerText.split(/(?=כתובת:|קוד:|סיבה:)/).filter(line => line.trim());
+              }
+              overlayContent.innerHTML = lines.map(line => `<p>${line.trim()}</p>`).join('');
+              overlay.style.display = 'flex';
+            }, 500);
+          }
         });
 
         label.addEventListener('touchend', () => {
@@ -88,17 +97,18 @@
         });
 
         label.addEventListener('mousedown', (e) => {
-          e.preventDefault();
-          touchTimer = setTimeout(() => {
-            const overlay = document.getElementById('task-overlay');
-            const overlayContent = document.getElementById('task-overlay-content');
-            let lines = tooltip.innerText.split(/[\r\n]+/);
-            if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
-              lines = tooltip.innerText.split(/(?=כתובת:|קוד:|סיבה:)/).filter(line => line.trim());
-            }
-            overlayContent.innerHTML = lines.map(line => `<p>${line.trim()}</p>`).join('');
-            overlay.style.display = 'flex';
-          }, 500);
+          if (e.target !== checkbox) {
+            touchTimer = setTimeout(() => {
+              const overlay = document.getElementById('task-overlay');
+              const overlayContent = document.getElementById('task-overlay-content');
+              let lines = tooltip.innerText.split(/[\r\n]+/);
+              if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
+                lines = tooltip.innerText.split(/(?=כתובת:|קוד:|סיבה:)/).filter(line => line.trim());
+              }
+              overlayContent.innerHTML = lines.map(line => `<p>${line.trim()}</p>`).join('');
+              overlay.style.display = 'flex';
+            }, 500);
+          }
         });
 
         label.addEventListener('mouseup', () => {
@@ -232,7 +242,7 @@
     body {
       font-family: sans-serif;
       padding: 20px;
-      background: #f4f4f4;
+      background: #ffffff;
       margin: 0;
     }
     .header-image {
@@ -270,6 +280,15 @@
       display: inline-block;
       margin: 0 2px;
       position: relative;
+    }
+    .no-task {
+      color: black;
+    }
+    .has-task {
+      color: red;
+    }
+    .completed {
+      color: green;
     }
     .tooltip {
       display: none;
@@ -483,7 +502,7 @@
     </label>
     <textarea id="single-note" placeholder="כתוב כאן את ההערה"></textarea>
     <button id="single-insert">💾 שמור משימה</button>
-    <button id="clear-all">🗑️ נקה הכול</button>
+    <button id="clear-all">🗑️ נקה הכל</button>
   </div>
 
   <div id="task-overlay">
