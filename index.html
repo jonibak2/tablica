@@ -84,7 +84,7 @@
               const overlayContent = document.getElementById('task-overlay-content');
               let lines = tooltip.innerText.split(/[\r\n]+/);
               if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
-                lines = tooltip.innerText.split(/(?=כתובת:|קוד:|סיבה:)/).filter(line => line.trim());
+                lines = tooltip.innerText.split(/(?=כתובת:|קוד כניסה:|טלפון:|סיבה:|הערות:)/).filter(line => line.trim());
               }
               overlayContent.innerHTML = lines.map(line => `<p>${line.trim()}</p>`).join('');
               overlay.style.display = 'flex';
@@ -103,7 +103,7 @@
               const overlayContent = document.getElementById('task-overlay-content');
               let lines = tooltip.innerText.split(/[\r\n]+/);
               if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
-                lines = tooltip.innerText.split(/(?=כתובת:|קוד:|סיבה:)/).filter(line => line.trim());
+                lines = tooltip.innerText.split(/(?=כתובת:|קוד כניסה:|טלפון:|סיבה:|הערות:)/).filter(line => line.trim());
               }
               overlayContent.innerHTML = lines.map(line => `<p>${line.trim()}</p>`).join('');
               overlay.style.display = 'flex';
@@ -156,13 +156,18 @@
         const targetName = document.getElementById('target-name').value;
         const targetDay = parseInt(document.getElementById('target-day').value);
         const targetNumber = parseInt(document.getElementById('target-number').value);
-        const noteText = document.getElementById('single-note').value;
+        const address = document.getElementById('task-address').value;
+        const entryCode = document.getElementById('task-entry-code').value;
+        const phone = document.getElementById('task-phone').value;
+        const reason = document.getElementById('task-reason').value;
+        const comments = document.getElementById('task-comments').value;
 
         const rowIndex = names.indexOf(targetName);
-        if (rowIndex === -1 || isNaN(targetDay) || isNaN(targetNumber) || !noteText.trim()) {
+        if (rowIndex === -1 || isNaN(targetDay) || isNaN(targetNumber)) {
           return alert("נתונים לא תקינים");
         }
 
+        const noteText = `כתובת: ${address}\nקוד כניסה: ${entryCode}\nטלפון: ${phone}\nסיבה: ${reason}\nהערות: ${comments}`;
         const dbKey = `notes/${rowIndex}/${targetDay}/${targetNumber}`;
         set(ref(db, dbKey), {
           checked: false,
@@ -351,6 +356,9 @@
       width: 100%;
       margin-bottom: 5px;
     }
+    .required {
+      color: red;
+    }
     #task-overlay {
       display: none;
       position: fixed;
@@ -481,15 +489,17 @@
   </div>
 
   <div id="single-panel">
-    <label>שם:
-      <select id="target-name">
+    <label>שם:<span class="required">*</span>
+      <select id="target-name" required>
+        <option value="">בחר שם</option>
         <option>טימור</option>
         <option>יעקב</option>
         <option>אלי</option>
       </select>
     </label>
-    <label>יום:
-      <select id="target-day">
+    <label>יום:<span class="required">*</span>
+      <select id="target-day" required>
+        <option value="">בחר יום</option>
         <option value="0">ראשון</option>
         <option value="1">שני</option>
         <option value="2">שלישי</option>
@@ -497,8 +507,9 @@
         <option value="4">חמישי</option>
       </select>
     </label>
-    <label>מספר משימה:
-      <select id="target-number">
+    <label>מספר משימה:<span class="required">*</span>
+      <select id="target-number" required>
+        <option value="">בחר מספר</option>
         <option value="1">1</option>
         <option value="2">2</option>
         <option value="3">3</option>
@@ -507,7 +518,21 @@
         <option value="6">6</option>
       </select>
     </label>
-    <textarea id="single-note" placeholder="כתוב כאן את ההערה"></textarea>
+    <label>כתובת:<span class="required">*</span>
+      <input type="text" id="task-address" required placeholder="הזן כתובת">
+    </label>
+    <label>קוד כניסה:<span class="required">*</span>
+      <input type="text" id="task-entry-code" required placeholder="הזן קוד כניסה">
+    </label>
+    <label>טלפון:<span class="required">*</span>
+      <input type="tel" id="task-phone" required placeholder="הזן מספר טלפון" pattern="[0-9]{9,10}">
+    </label>
+    <label>סיבה:<span class="required">*</span>
+      <input type="text" id="task-reason" required placeholder="הזן סיבה">
+    </label>
+    <label>הערות:<span class="required">*</span>
+      <textarea id="task-comments" required placeholder="הזן הערות"></textarea>
+    </label>
     <button id="single-insert">💾 שמור משימה</button>
     <button id="clear-all">🗑️ נקה הכל</button>
     <button id="admin-exit">יציאה ממצב מנהל</button>
