@@ -152,16 +152,21 @@
 
       document.getElementById('single-insert').addEventListener('click', () => {
         const targetName = document.getElementById('target-name').value;
-        const targetDay = parseInt(document.getElementById('target-day').value);
-        const targetNumber = parseInt(document.getElementById('target-number').value);
-        const address = document.getElementById('task-address').value;
-        const entryCode = document.getElementById('task-entry-code').value;
-        const phone = document.getElementById('task-phone').value;
-        const reason = document.getElementById('task-reason').value;
-        const comments = document.getElementById('task-comments').value;
+        const targetDay = document.getElementById('target-day').value;
+        const targetNumber = document.getElementById('target-number').value;
+        const address = document.getElementById('task-address').value.trim();
+        const entryCode = document.getElementById('task-entry-code').value.trim();
+        const phone = document.getElementById('task-phone').value.trim();
+        const reason = document.getElementById('task-reason').value.trim();
+        const comments = document.getElementById('task-comments').value.trim();
+
+        // Validate all fields are filled
+        if (!targetName || !targetDay || !targetNumber || !address || !entryCode || !phone || !reason || !comments) {
+          return alert("נא למלא את כל השדות");
+        }
 
         const rowIndex = names.indexOf(targetName);
-        if (rowIndex === -1 || isNaN(targetDay) || isNaN(targetNumber)) {
+        if (rowIndex === -1 || isNaN(parseInt(targetDay)) || isNaN(parseInt(targetNumber))) {
           return alert("נתונים לא תקינים");
         }
 
@@ -253,6 +258,7 @@
       padding: 20px;
       background: #ffffff;
       margin: 0;
+      position: relative;
     }
     .header-image {
       width: 100%;
