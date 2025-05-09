@@ -87,7 +87,6 @@
           clearTimeout(touchTimer);
         });
 
-        // Mouse long press for PC
         label.addEventListener('mousedown', (e) => {
           e.preventDefault();
           touchTimer = setTimeout(() => {
@@ -196,10 +195,37 @@
       window.addEventListener('resize', updateTableDisplay);
       updateTableDisplay();
 
-      // Close overlay on click
+      // Close task overlay on click
       document.getElementById('task-overlay').addEventListener('click', () => {
         document.getElementById('task-overlay').style.display = 'none';
       });
+
+      // Double back confirmation on mobile
+      let backPressed = false;
+      let backTimer;
+      if (window.matchMedia("(max-width: 600px)").matches) {
+        history.pushState(null, null, location.href);
+        window.addEventListener('popstate', () => {
+          if (!backPressed) {
+            backPressed = true;
+            document.getElementById('back-confirm-overlay').style.display = 'flex';
+            history.pushState(null, null, location.href);
+            backTimer = setTimeout(() => {
+              backPressed = false;
+              document.getElementById('back-confirm-overlay').style.display = 'none';
+            }, 3000);
+          } else {
+            clearTimeout(backTimer);
+            window.history.go(-2); // Exit the site
+          }
+        });
+
+        document.getElementById('back-cancel').addEventListener('click', () => {
+          backPressed = false;
+          clearTimeout(backTimer);
+          document.getElementById('back-confirm-overlay').style.display = 'none';
+        });
+      }
     });
   </script>
   <style>
@@ -211,11 +237,11 @@
     }
     .header-image {
       width: 100%;
-      max-width: 1599px;
+      max-width: 300px;
       height: auto;
       object-fit: contain;
       display: block;
-      margin: 0 auto 10px;
+      margin: 10px auto;
     }
     table {
       border-collapse: collapse;
@@ -327,13 +353,44 @@
       margin: 0 0 15px 0;
       direction: rtl;
     }
+    #back-confirm-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 300;
+      justify-content: center;
+      align-items: center;
+    }
+    #back-confirm-content {
+      background: #fff;
+      padding: 20px;
+      max-width: 90%;
+      text-align: center;
+      border-radius: 8px;
+      font-size: 1.2em;
+    }
+    #back-cancel {
+      margin-top: 10px;
+      padding: 8px 16px;
+      font-size: 1em;
+      background: #70ac4c;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
 
     @media (max-width: 600px) {
       body {
         padding: 10px;
       }
       .header-image {
-        margin-bottom: 5px;
+        max-width: 150px;
+        margin: 5px auto;
       }
       table {
         font-size: 0.85em;
@@ -352,22 +409,8 @@
         width: 150px;
         font-size: 0.9em;
       }
-      #admin-button {
-        padding: 6px 10px;
-        font-size: 0.8em;
-      }
-      #admin-panel, #single-panel {
-        width: 90%;
-        left: 5%;
-        bottom: 40px;
-        padding: 8px;
-      }
-      textarea, input, select {
-        font-size: 0.85em;
-      }
-      button {
-        font-size: 0.85em;
-        padding: 6px;
+      #admin-button, #admin-panel, #single-panel {
+        display: none;
       }
     }
 
@@ -445,6 +488,13 @@
 
   <div id="task-overlay">
     <div id="task-overlay-content"></div>
+  </div>
+
+  <div id="back-confirm-overlay">
+    <div id="back-confirm-content">
+      <p>לחץ שוב על "חזור" כדי לצאת</p>
+      <button id="back-cancel">ביטול</button>
+    </div>
   </div>
 </body>
 </html>
