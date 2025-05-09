@@ -67,25 +67,42 @@
           }
         });
 
-        // Long press for mobile
+        // Long press for mobile and PC
         let touchTimer;
         label.addEventListener('touchstart', (e) => {
-          if (window.matchMedia("(max-width: 600px)").matches) {
-            e.preventDefault();
-            touchTimer = setTimeout(() => {
-              const overlay = document.getElementById('task-overlay');
-              const overlayContent = document.getElementById('task-overlay-content');
-              let lines = tooltip.innerText.split(/[\r\n]+/);
-              if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
-                lines = tooltip.innerText.split(/(?=כתובת:|קוד:|סיבה:)/).filter(line => line.trim());
-              }
-              overlayContent.innerHTML = lines.map(line => `<p>${line.trim()}</p>`).join('');
-              overlay.style.display = 'flex';
-            }, 500);
-          }
+          e.preventDefault();
+          touchTimer = setTimeout(() => {
+            const overlay = document.getElementById('task-overlay');
+            const overlayContent = document.getElementById('task-overlay-content');
+            let lines = tooltip.innerText.split(/[\r\n]+/);
+            if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
+              lines = tooltip.innerText.split(/(?=כתובת:|קוד:|סיבה:)/).filter(line => line.trim());
+            }
+            overlayContent.innerHTML = lines.map(line => `<p>${line.trim()}</p>`).join('');
+            overlay.style.display = 'flex';
+          }, 500);
         });
 
         label.addEventListener('touchend', () => {
+          clearTimeout(touchTimer);
+        });
+
+        // Mouse long press for PC
+        label.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          touchTimer = setTimeout(() => {
+            const overlay = document.getElementById('task-overlay');
+            const overlayContent = document.getElementById('task-overlay-content');
+            let lines = tooltip.innerText.split(/[\r\n]+/);
+            if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
+              lines = tooltip.innerText.split(/(?=כתובת:|קוד:|סיבה:)/).filter(line => line.trim());
+            }
+            overlayContent.innerHTML = lines.map(line => `<p>${line.trim()}</p>`).join('');
+            overlay.style.display = 'flex';
+          }, 500);
+        });
+
+        label.addEventListener('mouseup', () => {
           clearTimeout(touchTimer);
         });
 
@@ -143,7 +160,7 @@
       });
 
       // Set dates for each day and highlight today
-      const today = (new Date().getDay() + 6) % 7;
+      const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, ..., 4 = Thursday
       const now = new Date();
       const sunday = new Date(now);
       sunday.setDate(now.getDate() - now.getDay());
@@ -192,9 +209,13 @@
       background: #f4f4f4;
       margin: 0;
     }
-    h1 {
-      font-size: 1.5em;
-      text-align: center;
+    .header-image {
+      width: 100%;
+      max-width: 1599px;
+      height: auto;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto 10px;
     }
     table {
       border-collapse: collapse;
@@ -311,8 +332,8 @@
       body {
         padding: 10px;
       }
-      h1 {
-        font-size: 1.2em;
+      .header-image {
+        margin-bottom: 5px;
       }
       table {
         font-size: 0.85em;
@@ -358,7 +379,7 @@
   </style>
 </head>
 <body>
-  <h1>טבלת משימות</h1>
+  <img src="utech.jpg" alt="Utech Logo" class="header-image">
   <select id="day-select">
     <option value="0">ראשון</option>
     <option value="1">שני</option>
