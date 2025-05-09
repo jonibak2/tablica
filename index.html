@@ -146,6 +146,12 @@
         }
       });
 
+      document.getElementById('admin-exit').addEventListener('click', () => {
+        isAdmin.status = false;
+        document.getElementById('single-panel').style.display = 'none';
+        alert('יצאת ממצב מנהל');
+      });
+
       document.getElementById('single-insert').addEventListener('click', () => {
         const targetName = document.getElementById('target-name').value;
         const targetDay = parseInt(document.getElementById('target-day').value);
@@ -280,6 +286,7 @@
       display: inline-block;
       margin: 0 2px;
       position: relative;
+      font-weight: bold;
     }
     .no-task {
       color: black;
@@ -503,6 +510,7 @@
     <textarea id="single-note" placeholder="כתוב כאן את ההערה"></textarea>
     <button id="single-insert">💾 שמור משימה</button>
     <button id="clear-all">🗑️ נקה הכל</button>
+    <button id="admin-exit">יציאה ממצב מנהל</button>
   </div>
 
   <div id="task-overlay">
