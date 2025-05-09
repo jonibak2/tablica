@@ -63,7 +63,7 @@
 
         label.addEventListener('click', (e) => {
           if (isAdmin.status && e.target !== checkbox) {
-            e.stopPropagation();
+            e.preventDefault();
             const newText = prompt('ערוך מידע עבור תיבה זו:', tooltip.innerText);
             if (newText !== null) {
               tooltip.innerText = newText;
@@ -77,19 +77,21 @@
 
         // Long press for mobile and PC
         let touchTimer;
+        const showTaskOverlay = (tooltip) => {
+          const overlay = document.getElementById('task-overlay');
+          const overlayContent = document.getElementById('task-overlay-content');
+          let lines = tooltip.innerText.split(/[\r\n]+/);
+          if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
+            lines = tooltip.innerText.split(/(?=כתובת:|קוד כניסה:|טלפון:|סיבה:|הערות:)/).filter(line => line.trim());
+          }
+          overlayContent.innerHTML = lines.map(line => `<p>${line.trim()}</p>`).join('');
+          overlay.style.display = 'flex';
+        };
+
         label.addEventListener('touchstart', (e) => {
           if (e.target !== checkbox) {
             e.preventDefault(); // Prevent scrolling on mobile
-            touchTimer = setTimeout(() => {
-              const overlay = document.getElementById('task-overlay');
-              const overlayContent = document.getElementById('task-overlay-content');
-              let lines = tooltip.innerText.split(/[\r\n]+/);
-              if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
-                lines = tooltip.innerText.split(/(?=כתובת:|קוד כניסה:|טלפון:|סיבה:|הערות:)/).filter(line => line.trim());
-              }
-              overlayContent.innerHTML = lines.map(line => `<p>${line.trim()}</p>`).join('');
-              overlay.style.display = 'flex';
-            }, 500);
+            touchTimer = setTimeout(() => showTaskOverlay(tooltip), 500);
           }
         });
 
@@ -103,16 +105,7 @@
 
         label.addEventListener('mousedown', (e) => {
           if (e.target !== checkbox) {
-            touchTimer = setTimeout(() => {
-              const overlay = document.getElementById('task-overlay');
-              const overlayContent = document.getElementById('task-overlay-content');
-              let lines = tooltip.innerText.split(/[\r\n]+/);
-              if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
-                lines = tooltip.innerText.split(/(?=כתובת:|קוד כניסה:|טלפון:|סיבה:|הערות:)/).filter(line => line.trim());
-              }
-              overlayContent.innerHTML = lines.map(line => `<p>${line.trim()}</p>`).join('');
-              overlay.style.display = 'flex';
-            }, 500);
+            touchTimer = setTimeout(() => showTaskOverlay(tooltip), 500);
           }
         });
 
