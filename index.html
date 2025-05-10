@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>טבלת משימות</title>
+  <title>טבלת משימות UTECH</title>
+  <link rel="icon" href="logo.jpg" type="image/jpeg">
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
     import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
@@ -291,30 +292,22 @@
         }
       });
 
-      // Double back confirmation on mobile
-      let backPressed = false;
-      let backTimer;
+      // Persistent back confirmation on mobile
       if (window.matchMedia("(max-width: 600px)").matches) {
-        history.pushState(null, null, location.href);
-        window.addEventListener('popstate', () => {
-          if (!backPressed) {
-            backPressed = true;
+        history.pushState({ page: 'main' }, null, location.href);
+        window.addEventListener('popstate', (event) => {
+          if (event.state?.page === 'main') {
             document.getElementById('back-confirm-overlay').style.display = 'flex';
-            history.pushState(null, null, location.href);
-            backTimer = setTimeout(() => {
-              backPressed = false;
-              document.getElementById('back-confirm-overlay').style.display = 'none';
-            }, 3000);
-          } else {
-            clearTimeout(backTimer);
+            history.pushState({ page: 'confirm' }, null, location.href);
+          } else if (event.state?.page === 'confirm') {
+            document.getElementById('back-confirm-overlay').style.display = 'none';
             window.history.go(-2); // Exit the site
           }
         });
 
         document.getElementById('back-cancel').addEventListener('click', () => {
-          backPressed = false;
-          clearTimeout(backTimer);
           document.getElementById('back-confirm-overlay').style.display = 'none';
+          history.pushState({ page: 'main' }, null, location.href);
         });
       }
     });
@@ -588,7 +581,7 @@
   </style>
 </head>
 <body>
-  <img src="utech.jpg" alt="Utech Logo" class="header-image">
+  <img src="logo.jpg" alt="UTECH Logo" class="header-image">
   <select id="day-select">
     <option value="0">ראשון</option>
     <option value="1">שני</option>
