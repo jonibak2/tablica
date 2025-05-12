@@ -37,6 +37,7 @@
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
+        checkbox.disabled = window.matchMedia("(min-width: 601px)").matches; // Disable on PC
         const dbKey = `notes/${rowIndex}/${colIndex}/${i}`;
 
         const tooltip = document.createElement('div');
@@ -83,7 +84,7 @@
           const overlayContent = document.getElementById('task-overlay-content');
           let lines = tooltip.innerText.split(/[\r\n]+/);
           if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
-            lines = tooltip.innerText.split(/(?=כתובת:|קוד כניסה:|טלפון \d+:|סיבה:|הערות:)/).filter(line => line.trim());
+            lines = tooltip.innerText.split(/(?=כתובת:|קוד כניסה:|קוד חניון:|קוד גג:|טלפון \d+:|סיבה:|הערות:)/).filter(line => line.trim());
           }
           overlayContent.innerHTML = lines.map(line => {
             if (line.match(/טלפון \d+:/)) {
@@ -199,12 +200,25 @@
         });
       });
 
+      // Toggle code input and options visibility based on checkbox
+      ['entry', 'parking', 'roof'].forEach(type => {
+        const checkbox = document.getElementById(`no-code-${type}`);
+        const codeInput = document.getElementById(`code-${type}`);
+        const optionsDiv = document.getElementById(`code-${type}-options`);
+        const select = document.getElementById(`code-${type}-option`);
+
+        checkbox.addEventListener('change', () => {
+          codeInput.style.display = checkbox.checked ? 'none' : 'block';
+          optionsDiv.style.display = checkbox.checked ? 'block' : 'none';
+          select.value = ''; // Reset dropdown
+        });
+      });
+
       document.getElementById('single-insert').addEventListener('click', () => {
         const targetName = document.getElementById('target-name').value;
         const targetDay = document.getElementById('target-day').value;
         const targetNumber = document.getElementById('target-number').value;
         const address = document.getElementById('task-address').value.trim();
-        const entryCode = document.getElementById('task-entry-code').value.trim();
         const reason = document.getElementById('task-reason').value.trim();
         const comments = document.getElementById('task-comments').value.trim();
 
@@ -220,9 +234,45 @@
           phones.push({ phone, name });
         }
 
-        // Validate other fields
-        if (!targetName || !targetDay || !targetNumber || !address || !entryCode || !reason || !comments) {
+        // Collect code fields
+        const codes = {
+          entry: {
+            noCode: document.getElementById('no-code-entry').checked,
+            code: document.getElementById('code-entry').value.trim(),
+            option: document.getElementById('code-entry-option').value
+          },
+          parking: {
+            noCode: document.getElementById('no-code-parking').checked,
+            code: document.getElementById('code-parking').value.trim(),
+            option: document.getElementById('code-parking-option').value
+          },
+          roof: {
+            noCode: document.getElementById('no-code-roof').checked,
+            code: document.getElementById('code-roof').value.trim(),
+            option: document.getElementById('code-roof-option').value
+          }
+        };
+
+        // Format code text
+        const codeText = [
+          `קוד כניסה: ${codes.entry.noCode ? (codes.entry.option || 'לא צוין') : (codes.entry.code || 'לא צוין')}`,
+          `קוד חניון: ${codes.parking.noCode ? (codes.parking.option || 'לא צוין') : (codes.parking.code || 'לא צוין')}`,
+          `קוד גג: ${codes.roof.noCode ? (codes.roof.option || 'לא צוין') : (codes.roof.code || 'לא צוין')}`
+        ].join('\n');
+
+        // Validate fields
+        if (!targetName || !targetDay || !targetNumber || !address || !reason || !comments) {
           return alert("נא למלא את כל השדות");
+        }
+
+        // Validate codes
+        for (const type of ['entry', 'parking', 'roof']) {
+          if (!codes[type].noCode && !codes[type].code) {
+            return alert(`נא להזין קוד עבור ${type === 'entry' ? 'כניסה' : type === 'parking' ? 'חניון' : 'גג'} או לסמן אין קוד`);
+          }
+          if (codes[type].noCode && !codes[type].option) {
+            return alert(`נא לבחור סיבה עבור אין קוד ב${type === 'entry' ? 'כניסה' : type === 'parking' ? 'חניון' : 'גג'}`);
+          }
         }
 
         const rowIndex = names.indexOf(targetName);
@@ -230,9 +280,9 @@
           return alert("נתונים לא תקינים");
         }
 
-        // Format note with multiple phones
+        // Format note with multiple phones and codes
         const phoneText = phones.map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`).join('\n');
-        const noteText = `כתובת: ${address}\nקוד כניסה: ${entryCode}\n${phoneText}\nסיבה: ${reason}\nהערות: ${comments}`;
+        const noteText = `כתובת: ${address}\n${codeText}\n${phoneText}\nסיבה: ${reason}\nהערות: ${comments}`;
         const dbKey = `notes/${rowIndex}/${targetDay}/${targetNumber}`;
         set(ref(db, dbKey), {
           checked: false,
@@ -282,7 +332,13 @@
       }
 
       daySelect.addEventListener('change', updateTableDisplay);
-      window.addEventListener('resize', updateTableDisplay);
+      window.addEventListener('resize', () => {
+        updateTableDisplay();
+        // Update checkbox disabled state on resize
+        document.querySelectorAll('.checkboxes input[type="checkbox"]').forEach(checkbox => {
+          checkbox.disabled = window.matchMedia("(min-width: 601px)").matches;
+        });
+      });
       updateTableDisplay();
 
       // Close task overlay only when clicking outside content
@@ -346,7 +402,8 @@
       color: white;
     }
     .today {
-      background: #5ca026 !important;
+      background: #F0F4C3 !important;
+      color: black;
     }
     th.name {
       background: #f09c9c;
@@ -452,7 +509,7 @@
     .remove-phone {
       padding: 5px;
       font-size: 1em;
-      width: auto;
+      width: lets-auto;
       background: #ff4444;
       color: white;
       border: none;
@@ -533,6 +590,52 @@
       border-radius: 4px;
       cursor: pointer;
     }
+    #codes-section {
+      margin-bottom: 8px;
+    }
+    #codes-section label {
+      display: block;
+      margin-bottom: 2px;
+    }
+    .code-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 2px;
+    }
+    .code-row input[type="text"] {
+      width: 60%;
+      padding: 3px;
+      font-size: 0.9em;
+      margin-left: 5px;
+    }
+    .checkbox-container {
+      width: 40%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      text-align: center;
+    }
+    .checkbox-container input[type="checkbox"] {
+      margin: 0;
+    }
+    .checkbox-container label {
+      font-size: 0.9em;
+      margin-top: 1px;
+      line-height: 1;
+    }
+    .code-options {
+      display: none;
+      margin-top: -27px;
+      margin-bottom: 2px;
+      padding-right: 40%;
+    }
+    .code-options select {
+      width: 60%;
+      font-size: 0.8em;
+      padding: 3px;
+      margin-left: 5px;
+    }
 
     @media (max-width: 600px) {
       body {
@@ -571,11 +674,30 @@
       .phone-name {
         width: 40%;
       }
+      .code-row input[type="text"] {
+        width: 55%;
+      }
+      .checkbox-container {
+        width: 45%;
+      }
+      .checkbox-container label {
+        font-size: 0.85em;
+      }
+      .code-options select {
+        width: 55%;
+      }
     }
 
     @media (min-width: 601px) {
       #day-select {
         display: none;
+      }
+      .checkboxes input[type="checkbox"] {
+        pointer-events: none;
+      }
+      .checkboxes input[type="checkbox"]:disabled {
+        opacity: 1;
+        cursor: default;
       }
     }
   </style>
@@ -646,9 +768,57 @@
     <label>כתובת:<span class="required">*</span>
       <input type="text" id="task-address" required placeholder="הזן כתובת">
     </label>
-    <label>קוד כניסה:<span class="required">*</span>
-      <input type="text" id="task-entry-code" required placeholder="הזן קוד כניסה">
-    </label>
+    <div id="codes-section">
+      <label>קודים:<span class="required">*</span></label>
+      <label>כניסה:
+        <div class="code-row">
+          <input type="text" id="code-entry" placeholder="הזן קוד כניסה">
+          <div class="checkbox-container">
+            <input type="checkbox" id="no-code-entry">
+            <label for="no-code-entry">אין קוד</label>
+          </div>
+        </div>
+        <div class="code-options" id="code-entry-options">
+          <select id="code-entry-option" class="code-option-select">
+            <option value="">בחר אפשרות</option>
+            <option value="יש שומר">יש שומר</option>
+            <option value="אין קודן / דלת פתוחה">אין קודן / דלת פתוחה</option>
+          </select>
+        </div>
+      </label>
+      <label>חניון:
+        <div class="code-row">
+          <input type="text" id="code-parking" placeholder="הזן קוד חניון">
+          <div class="checkbox-container">
+            <input type="checkbox" id="no-code-parking">
+            <label for="no-code-parking">אין קוד</label>
+          </div>
+        </div>
+        <div class="code-options" id="code-parking-options">
+          <select id="code-parking-option" class="code-option-select">
+            <option value="">בחר אפשרות</option>
+            <option value="יש שומר">יש שומר</option>
+            <option value="אין קודן / דלת פתוחה">אין קודן / דלת פתוחה</option>
+          </select>
+        </div>
+      </label>
+      <label>גג:
+        <div class="code-row">
+          <input type="text" id="code-roof" placeholder="הזן קוד גג">
+          <div class="checkbox-container">
+            <input type="checkbox" id="no-code-roof">
+            <label for="no-code-roof">אין קוד</label>
+          </div>
+        </div>
+        <div class="code-options" id="code-roof-options">
+          <select id="code-roof-option" class="code-option-select">
+            <option value="">בחר אפשרות</option>
+            <option value="יש שומר">יש שומר</option>
+            <option value="אין קודן / דלת פתוחה">אין קודן / דלת פתוחה</option>
+          </select>
+        </div>
+      </label>
+    </div>
     <label>טלפון:<span class="required">*</span></label>
     <div id="phone-list">
       <div class="phone-entry">
