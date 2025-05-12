@@ -37,7 +37,7 @@
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.disabled = window.matchMedia("(min-width: 601px)").matches; // Disable on PC
+        checkbox.disabled = window.matchMedia("(min-width: 601px)").matches;
         const dbKey = `notes/${rowIndex}/${colIndex}/${i}`;
 
         const tooltip = document.createElement('div');
@@ -77,7 +77,6 @@
           }
         });
 
-        // Long press for mobile and PC
         let touchTimer;
         const showTaskOverlay = (tooltip) => {
           const overlay = document.getElementById('task-overlay');
@@ -98,7 +97,6 @@
           }).join('');
           overlay.style.display = 'flex';
 
-          // Add event listeners for copy buttons
           document.querySelectorAll('.copy-phone').forEach(button => {
             button.addEventListener('click', () => {
               const phone = button.getAttribute('data-phone');
@@ -117,7 +115,7 @@
 
         label.addEventListener('touchstart', (e) => {
           if (e.target !== checkbox) {
-            e.preventDefault(); // Prevent scrolling on mobile
+            e.preventDefault();
             touchTimer = setTimeout(() => showTaskOverlay(tooltip), 500);
           }
         });
@@ -166,6 +164,7 @@
           alert('הכניסה בוצעה בהצלחה!');
           document.getElementById('admin-panel').style.display = 'none';
           document.getElementById('single-panel').style.display = 'block';
+          document.getElementById('admin-button').style.display = 'none';
         } else {
           alert('קוד שגוי!');
         }
@@ -174,10 +173,10 @@
       document.getElementById('admin-exit').addEventListener('click', () => {
         isAdmin.status = false;
         document.getElementById('single-panel').style.display = 'none';
-        alert('יצאת ממצב מנהל');
+        document.getElementById('admin-button').style.display = 'block';
+        alert('יצאת ממצב ניהול');
       });
 
-      // Dynamic phone fields
       let phoneCount = 1;
       document.getElementById('add-phone').addEventListener('click', () => {
         phoneCount++;
@@ -191,7 +190,6 @@
         `;
         phoneList.appendChild(phoneEntry);
 
-        // Add event listener for remove button
         phoneEntry.querySelector('.remove-phone').addEventListener('click', () => {
           if (phoneCount > 1) {
             phoneEntry.remove();
@@ -200,7 +198,6 @@
         });
       });
 
-      // Toggle code input and options visibility based on checkbox
       ['entry', 'parking', 'roof'].forEach(type => {
         const checkbox = document.getElementById(`no-code-${type}`);
         const codeInput = document.getElementById(`code-${type}`);
@@ -210,7 +207,7 @@
         checkbox.addEventListener('change', () => {
           codeInput.style.display = checkbox.checked ? 'none' : 'block';
           optionsDiv.style.display = checkbox.checked ? 'block' : 'none';
-          select.value = ''; // Reset dropdown
+          select.value = '';
         });
       });
 
@@ -222,7 +219,6 @@
         const reason = document.getElementById('task-reason').value.trim();
         const comments = document.getElementById('task-comments').value.trim();
 
-        // Collect all phone numbers and names
         const phoneEntries = document.querySelectorAll('.phone-entry');
         const phones = [];
         for (let i = 0; i < phoneEntries.length; i++) {
@@ -234,7 +230,6 @@
           phones.push({ phone, name });
         }
 
-        // Collect code fields
         const codes = {
           entry: {
             noCode: document.getElementById('no-code-entry').checked,
@@ -253,19 +248,16 @@
           }
         };
 
-        // Format code text
         const codeText = [
           `קוד כניסה: ${codes.entry.noCode ? (codes.entry.option || 'לא צוין') : (codes.entry.code || 'לא צוין')}`,
           `קוד חניון: ${codes.parking.noCode ? (codes.parking.option || 'לא צוין') : (codes.parking.code || 'לא צוין')}`,
           `קוד גג: ${codes.roof.noCode ? (codes.roof.option || 'לא צוין') : (codes.roof.code || 'לא צוין')}`
         ].join('\n');
 
-        // Validate fields
         if (!targetName || !targetDay || !targetNumber || !address || !reason || !comments) {
           return alert("נא למלא את כל השדות");
         }
 
-        // Validate codes
         for (const type of ['entry', 'parking', 'roof']) {
           if (!codes[type].noCode && !codes[type].code) {
             return alert(`נא להזין קוד עבור ${type === 'entry' ? 'כניסה' : type === 'parking' ? 'חניון' : 'גג'} או לסמן אין קוד`);
@@ -280,7 +272,6 @@
           return alert("נתונים לא תקינים");
         }
 
-        // Format note with multiple phones and codes
         const phoneText = phones.map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`).join('\n');
         const noteText = `כתובת: ${address}\n${codeText}\n${phoneText}\nסיבה: ${reason}\nהערות: ${comments}`;
         const dbKey = `notes/${rowIndex}/${targetDay}/${targetNumber}`;
@@ -294,14 +285,13 @@
         set(ref(db, 'notes'), null).then(() => location.reload());
       });
 
-      // Set dates for each day, load next week on Friday or Saturday
-      const today = new Date().getDay(); // 0 = Sunday, ..., 5 = Friday, 6 = Saturday
+      const today = new Date().getDay();
       const now = new Date();
       const sunday = new Date(now);
-      if (today === 5 || today === 6) { // Friday or Saturday: show next week
-        sunday.setDate(now.getDate() - now.getDay() + 7); // Next Sunday
+      if (today === 5 || today === 6) {
+        sunday.setDate(now.getDate() - now.getDay() + 7);
       } else {
-        sunday.setDate(now.getDate() - now.getDay()); // Current Sunday
+        sunday.setDate(now.getDate() - now.getDay());
       }
       for (let i = 0; i < 5; i++) {
         const date = new Date(sunday);
@@ -334,21 +324,18 @@
       daySelect.addEventListener('change', updateTableDisplay);
       window.addEventListener('resize', () => {
         updateTableDisplay();
-        // Update checkbox disabled state on resize
         document.querySelectorAll('.checkboxes input[type="checkbox"]').forEach(checkbox => {
           checkbox.disabled = window.matchMedia("(min-width: 601px)").matches;
         });
       });
       updateTableDisplay();
 
-      // Close task overlay only when clicking outside content
       document.getElementById('task-overlay').addEventListener('click', (e) => {
         if (e.target === document.getElementById('task-overlay')) {
           document.getElementById('task-overlay').style.display = 'none';
         }
       });
 
-      // Persistent back confirmation on mobile
       if (window.matchMedia("(max-width: 600px)").matches) {
         history.pushState({ page: 'main' }, null, location.href);
         window.addEventListener('popstate', (event) => {
@@ -357,7 +344,7 @@
             history.pushState({ page: 'confirm' }, null, location.href);
           } else if (event.state?.page === 'confirm') {
             document.getElementById('back-confirm-overlay').style.display = 'none';
-            window.history.go(-2); // Exit the site
+            window.history.go(-2);
           }
         });
 
@@ -447,22 +434,26 @@
       width: 200px;
     }
     #admin-button {
-      position: fixed;
-      bottom: 10px;
-      left: 10px;
+      display: block;
+      margin: 10px auto;
       padding: 8px 12px;
       font-size: 0.9em;
+      background: #70ac4c;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
     }
     #admin-panel, #single-panel {
       display: none;
-      position: fixed;
-      bottom: 50px;
-      left: 10px;
+      position: relative;
       background: white;
       border: 1px solid #ccc;
-      padding: 10px;
-      width: 280px;
-      max-width: 90%;
+      padding: 15px;
+      width: 100%;
+      max-width: 100%;
+      margin: 10px 0;
+      box-sizing: border-box;
       z-index: 100;
     }
     textarea, input, select {
@@ -509,7 +500,7 @@
     .remove-phone {
       padding: 5px;
       font-size: 1em;
-      width: lets-auto;
+      width: auto;
       background: #ff4444;
       color: white;
       border: none;
@@ -662,8 +653,11 @@
         width: 150px;
         font-size: 0.9em;
       }
-      #admin-button, #admin-panel, #single-panel {
+      #admin-button, #admin-panel {
         display: none;
+      }
+      #single-panel {
+        padding: 10px;
       }
       .copy-phone {
         display: inline-block;
@@ -734,7 +728,6 @@
     <label>קוד גישה: <input type="password" id="admin-code"></label>
     <button id="admin-confirm">אישור</button>
   </div>
-
   <div id="single-panel">
     <label>שם:<span class="required">*</span>
       <select id="target-name" required>
@@ -848,5 +841,6 @@
       <button id="back-cancel">ביטול</button>
     </div>
   </div>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'93eb1f9ff9fb6777',t:'MTc0NzA2NTU2OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
 </body>
 </html>
