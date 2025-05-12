@@ -7,7 +7,7 @@
   <link rel="icon" href="logo.jpg" type="image/jpeg">
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+    import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAFTYDz4TvUfiXx1F3xFer86WV-UMVRi7U",
@@ -25,20 +25,22 @@
     const isAdmin = { status: false };
     const names = ["טימור", "יעקב", "אלי"];
     const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
+    const teamColors = ['blue', 'yellow', 'purple', 'orange', 'pink', 'cyan', 'magenta'];
+    const taskNumbers = [1, 2, 3, 4, 5, 6];
 
     function createCheckboxCell(cell, rowIndex, colIndex) {
       const container = document.createElement('div');
       container.className = 'checkboxes';
 
-      for (let i = 1; i <= 6; i++) {
+      taskNumbers.forEach((taskNum, i) => {
         const label = document.createElement('label');
-        label.innerText = i;
+        label.innerText = taskNum;
         label.className = 'no-task';
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.disabled = window.matchMedia("(min-width: 601px)").matches;
-        const dbKey = `notes/${rowIndex}/${colIndex}/${i}`;
+        const dbKey = `notes/${rowIndex}/${colIndex}/${i + 1}`;
 
         const tooltip = document.createElement('div');
         tooltip.className = 'tooltip';
@@ -47,103 +49,222 @@
           const data = snapshot.val();
           checkbox.checked = data?.checked || false;
           tooltip.innerText = data?.note || 'אין מידע';
-          if (checkbox.checked) {
-            label.className = 'completed';
-          } else if (data?.note && data.note !== 'אין מידע') {
-            label.className = 'has-task';
-          } else {
-            label.className = 'no-task';
+          label.className = checkbox.checked ? 'completed' :
+                            data?.teamColor ? `team-${data.teamColor}` :
+                            (data?.note && data.note !== 'אין מידע') ? 'has-task' :
+                            'no-task';
+        });
+
+        checkbox.addEventListener('change', async () => {
+          try {
+            const snapshot = await get(ref(db, dbKey));
+            const data = snapshot.val();
+            if (data?.teamColor) {
+              for (let otherRowIndex = 0; otherRowIndex < names.length; otherRowIndex++) {
+                if (otherRowIndex !== rowIndex) {
+                  const otherKey = `notes/${otherRowIndex}/${colIndex}/${i + 1}`;
+                  const otherSnapshot = await get(ref(db, otherKey));
+                  const otherData = otherSnapshot.val();
+                  if (otherData?.note === data.note && otherData?.teamColor === data.teamColor) {
+                    await set(ref(db, otherKey), {
+                      checked: checkbox.checked,
+                      note: data.note,
+                      teamColor: data.teamColor
+                    });
+                  }
+                }
+              }
+            }
+            await set(ref(db, dbKey), {
+              checked: checkbox.checked,
+              note: data?.note || tooltip.innerText,
+              teamColor: data?.teamColor || null
+            });
+          } catch (error) {
+            console.error('Error updating task:', error);
+            alert('שגיאה בעדכון המשימה');
           }
         });
 
-        checkbox.addEventListener('change', () => {
-          set(ref(db, dbKey), {
-            checked: checkbox.checked,
-            note: tooltip.innerText
-          });
-        });
-
-        label.addEventListener('click', (e) => {
+        label.addEventListener('click', async (e) => {
           if (isAdmin.status && e.target !== checkbox) {
             e.preventDefault();
-            const newText = prompt('ערוך מידע עבור תיבה זו:', tooltip.innerText);
-            if (newText !== null) {
-              tooltip.innerText = newText;
-              set(ref(db, dbKey), {
-                checked: checkbox.checked,
-                note: newText
-              });
-            }
-          }
-        });
+            const snapshot = await get(ref(db, dbKey));
+            const currentData = snapshot.val() || { note: 'אין מידע', teamColor: null, checked: false };
+            const newText = prompt('ערוך מידע עבור תיבה זו (השאר ריק למחיקה):', currentData.note);
 
-        let touchTimer;
-        const showTaskOverlay = (tooltip) => {
-          const overlay = document.getElementById('task-overlay');
-          const overlayContent = document.getElementById('task-overlay-content');
-          let lines = tooltip.innerText.split(/[\r\n]+/);
-          if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
-            lines = tooltip.innerText.split(/(?=כתובת:|קוד כניסה:|קוד חניון:|קוד גג:|טלפון \d+:|סיבה:|הערות:)/).filter(line => line.trim());
-          }
-          overlayContent.innerHTML = lines.map(line => {
-            if (line.match(/טלפון \d+:/)) {
-              const phoneMatch = line.match(/טלפון \d+: ([^,]+), שם: (.*)/);
-              if (phoneMatch) {
-                const phoneNumber = phoneMatch[1].trim();
-                return `<p>${line}<button class="copy-phone" data-phone="${phoneNumber}">📋</button></p>`;
-              }
-            }
-            return `<p>${line.trim()}</p>`;
-          }).join('');
-          overlay.style.display = 'flex';
-
-          document.querySelectorAll('.copy-phone').forEach(button => {
-            button.addEventListener('click', () => {
-              const phone = button.getAttribute('data-phone');
-              if (navigator.clipboard) {
-                navigator.clipboard.writeText(phone).then(() => {
-                  alert('המספר הועתק');
-                }).catch(() => {
-                  alert('שגיאה בהעתקת המספר');
+            try {
+              if (newText === null || newText.trim() === '') {
+                await set(ref(db, dbKey), {
+                  checked: false,
+                  note: 'אין מידע',
+                  teamColor: null
                 });
+
+                if (currentData.teamColor) {
+                  for (let otherRowIndex = 0; otherRowIndex < names.length; otherRowIndex++) {
+                    if (otherRowIndex !== rowIndex) {
+                      const otherKey = `notes/${otherRowIndex}/${colIndex}/${i + 1}`;
+                      const otherSnapshot = await get(ref(db, otherKey));
+                      const otherData = otherSnapshot.val();
+                      if (otherData?.note === currentData.note && otherData?.teamColor === currentData.teamColor) {
+                        await set(ref(db, otherKey), {
+                          checked: false,
+                          note: 'אין מידע',
+                          teamColor: null
+                        });
+                      }
+                    }
+                  }
+                }
               } else {
-                alert('פונקציית ההעתקה לא נתמכת בדפדפן זה');
+                await set(ref(db, dbKey), {
+                  checked: currentData.checked,
+                  note: newText,
+                  teamColor: currentData.teamColor
+                });
               }
-            });
-          });
-        };
-
-        label.addEventListener('touchstart', (e) => {
-          if (e.target !== checkbox) {
-            e.preventDefault();
-            touchTimer = setTimeout(() => showTaskOverlay(tooltip), 500);
+            } catch (error) {
+              console.error('Error updating note:', error);
+              alert('שגיאה בעדכון ההערה');
+            }
           }
         });
 
-        label.addEventListener('touchend', () => {
-          clearTimeout(touchTimer);
-        });
-
-        label.addEventListener('touchcancel', () => {
-          clearTimeout(touchTimer);
-        });
-
-        label.addEventListener('mousedown', (e) => {
-          if (e.target !== checkbox) {
-            touchTimer = setTimeout(() => showTaskOverlay(tooltip), 500);
-          }
-        });
-
-        label.addEventListener('mouseup', () => {
-          clearTimeout(touchTimer);
-        });
-
+        setupTaskOverlay(label, checkbox, tooltip);
         label.appendChild(checkbox);
         label.appendChild(tooltip);
         container.appendChild(label);
-      }
+      });
 
       cell.appendChild(container);
+    }
+
+    function setupTaskOverlay(label, checkbox, tooltip) {
+      let touchTimer;
+      const showTaskOverlay = () => {
+        const overlay = document.getElementById('task-overlay');
+        const overlayContent = document.getElementById('task-overlay-content');
+        let lines = tooltip.innerText.split(/[\r\n]+/);
+        if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
+          lines = tooltip.innerText.split(/(?=כתובת:|קוד כניסה:|קוד חניון:|קוד גג:|טלפון \d+:|סיבה:|הערות:)/).filter(line => line.trim());
+        }
+        overlayContent.innerHTML = lines.map(line => {
+          if (line.match(/טלפון \d+:/)) {
+            const phoneMatch = line.match(/טלפון \d+: ([^,]+), שם: (.*)/);
+            if (phoneMatch) {
+              const phoneNumber = phoneMatch[1].trim();
+              return `<p>${line}<button class="copy-phone" data-phone="${phoneNumber}">📋</button></p>`;
+            }
+          }
+          return `<p>${line.trim()}</p>`;
+        }).join('');
+        overlay.style.display = 'flex';
+
+        document.querySelectorAll('.copy-phone').forEach(button => {
+          button.addEventListener('click', () => {
+            const phone = button.getAttribute('data-phone');
+            if (navigator.clipboard) {
+              navigator.clipboard.writeText(phone).then(() => alert('המספר הועתק')).catch(() => alert('שגיאה בהעתקת המספר'));
+            } else {
+              alert('פונקציית ההעתקה לא נתמכת בדפדפן זה');
+            }
+          });
+        });
+      };
+
+      label.addEventListener('touchstart', (e) => {
+        if (e.target !== checkbox) {
+          e.preventDefault();
+          touchTimer = setTimeout(showTaskOverlay, 500);
+        }
+      });
+
+      label.addEventListener('touchend', () => clearTimeout(touchTimer));
+      label.addEventListener('touchcancel', () => clearTimeout(touchTimer));
+      label.addEventListener('mousedown', (e) => {
+        if (e.target !== checkbox) {
+          touchTimer = setTimeout(showTaskOverlay, 500);
+        }
+      });
+      label.addEventListener('mouseup', () => clearTimeout(touchTimer));
+    }
+
+    function setupPhoneEntries() {
+      let phoneCount = 1;
+      document.getElementById('add-phone').addEventListener('click', () => {
+        phoneCount++;
+        const phoneList = document.getElementById('phone-list');
+        const phoneEntry = document.createElement('div');
+        phoneEntry.className = 'phone-entry';
+        phoneEntry.innerHTML = `
+          <input type="tel" class="phone-number" placeholder="הזן מספר טלפון" required>
+          <input type="text" class="phone-name" placeholder="שם איש קשר" required>
+          <button class="remove-phone">−</button>
+        `;
+        phoneList.appendChild(phoneEntry);
+
+        phoneEntry.querySelector('.remove-phone').addEventListener('click', () => {
+          if (phoneCount > 1) {
+            phoneEntry.remove();
+            phoneCount--;
+          }
+        });
+      });
+    }
+
+    function setupCodeInputs() {
+      ['entry', 'parking', 'roof'].forEach(type => {
+        const checkbox = document.getElementById(`no-code-${type}`);
+        const codeInput = document.getElementById(`code-${type}`);
+        const optionsDiv = document.getElementById(`code-${type}-options`);
+        const select = document.getElementById(`code-${type}-option`);
+
+        checkbox.addEventListener('change', () => {
+          codeInput.style.display = checkbox.checked ? 'none' : 'block';
+          optionsDiv.style.display = checkbox.checked ? 'block' : 'none';
+          select.value = '';
+        });
+      });
+    }
+
+    function resetAdminPanelCheckboxes() {
+      const checkboxes = [
+        'team-work',
+        'no-code-entry',
+        'no-code-parking',
+        'no-code-roof'
+      ];
+      checkboxes.forEach(id => {
+        const checkbox = document.getElementById(id);
+        if (checkbox) {
+          checkbox.checked = false;
+        }
+      });
+
+      // Скрыть второе имя при сбросе team-work
+      document.getElementById('target-name-2-container').style.display = 'none';
+
+      // Сбросить видимость полей кодов
+      ['entry', 'parking', 'roof'].forEach(type => {
+        const codeInput = document.getElementById(`code-${type}`);
+        const optionsDiv = document.getElementById(`code-${type}-options`);
+        const select = document.getElementById(`code-${type}-option`);
+        if (codeInput && optionsDiv && select) {
+          codeInput.style.display = 'block';
+          optionsDiv.style.display = 'none';
+          select.value = '';
+        }
+      });
+    }
+
+    function updateTableDisplay() {
+      const selectedDay = parseInt(document.getElementById('day-select').value);
+      const isMobile = window.matchMedia("(max-width: 600px)").matches;
+      document.querySelectorAll('th[id^="day-"], td.cell').forEach(el => {
+        const colIndex = parseInt(el.id?.split('-')[1]) || Array.from(el.parentNode.children).indexOf(el) - 1;
+        el.style.display = isMobile && colIndex !== selectedDay ? 'none' : '';
+      });
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -152,6 +273,9 @@
         const colIndex = i % 5;
         createCheckboxCell(cell, rowIndex, colIndex);
       });
+
+      // Сброс чекбоксов при загрузке страницы
+      resetAdminPanelCheckboxes();
 
       document.getElementById('admin-button').addEventListener('click', () => {
         document.getElementById('admin-panel').style.display = 'block';
@@ -177,42 +301,17 @@
         alert('יצאת ממצב ניהול');
       });
 
-      let phoneCount = 1;
-      document.getElementById('add-phone').addEventListener('click', () => {
-        phoneCount++;
-        const phoneList = document.getElementById('phone-list');
-        const phoneEntry = document.createElement('div');
-        phoneEntry.className = 'phone-entry';
-        phoneEntry.innerHTML = `
-          <input type="tel" class="phone-number" placeholder="הזן מספר טלפון" required>
-          <input type="text" class="phone-name" placeholder="שם איש קשר" required>
-          <button class="remove-phone">−</button>
-        `;
-        phoneList.appendChild(phoneEntry);
-
-        phoneEntry.querySelector('.remove-phone').addEventListener('click', () => {
-          if (phoneCount > 1) {
-            phoneEntry.remove();
-            phoneCount--;
-          }
-        });
+      document.getElementById('team-work').addEventListener('change', () => {
+        document.getElementById('target-name-2-container').style.display = document.getElementById('team-work').checked ? 'block' : 'none';
       });
 
-      ['entry', 'parking', 'roof'].forEach(type => {
-        const checkbox = document.getElementById(`no-code-${type}`);
-        const codeInput = document.getElementById(`code-${type}`);
-        const optionsDiv = document.getElementById(`code-${type}-options`);
-        const select = document.getElementById(`code-${type}-option`);
+      setupPhoneEntries();
+      setupCodeInputs();
 
-        checkbox.addEventListener('change', () => {
-          codeInput.style.display = checkbox.checked ? 'none' : 'block';
-          optionsDiv.style.display = checkbox.checked ? 'block' : 'none';
-          select.value = '';
-        });
-      });
-
-      document.getElementById('single-insert').addEventListener('click', () => {
-        const targetName = document.getElementById('target-name').value;
+      document.getElementById('single-insert').addEventListener('click', async () => {
+        const isTeamWork = document.getElementById('team-work').checked;
+        const targetName1 = document.getElementById('target-name').value;
+        const targetName2 = isTeamWork ? document.getElementById('target-name-2').value : null;
         const targetDay = document.getElementById('target-day').value;
         const targetNumber = document.getElementById('target-number').value;
         const address = document.getElementById('task-address').value.trim();
@@ -224,9 +323,7 @@
         for (let i = 0; i < phoneEntries.length; i++) {
           const phone = phoneEntries[i].querySelector('.phone-number').value.trim();
           const name = phoneEntries[i].querySelector('.phone-name').value.trim();
-          if (!phone || !name) {
-            return alert("נא למלא את כל שדות הטלפון והשמות");
-          }
+          if (!phone || !name) return alert("נא למלא את כל שדות הטלפון והשמות");
           phones.push({ phone, name });
         }
 
@@ -254,8 +351,12 @@
           `קוד גג: ${codes.roof.noCode ? (codes.roof.option || 'לא צוין') : (codes.roof.code || 'לא צוין')}`
         ].join('\n');
 
-        if (!targetName || !targetDay || !targetNumber || !address || !reason || !comments) {
+        if (!targetName1 || !targetDay || !targetNumber || !address || !reason || !comments) {
           return alert("נא למלא את כל השדות");
+        }
+
+        if (isTeamWork && (!targetName2 || targetName1 === targetName2)) {
+          return alert("נא לבחור שני אנשים שונים לעבודת צוות");
         }
 
         for (const type of ['entry', 'parking', 'roof']) {
@@ -267,22 +368,45 @@
           }
         }
 
-        const rowIndex = names.indexOf(targetName);
-        if (rowIndex === -1 || isNaN(parseInt(targetDay)) || isNaN(parseInt(targetNumber))) {
+        const phoneText = phones.map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`).join('\n');
+        const noteText = `כתובת: ${address}\n${codeText}\n${phoneText}\nסיבה: ${reason}\nהערות: ${comments}`;
+        const teamColor = isTeamWork ? teamColors[Math.floor(Math.random() * teamColors.length)] : null;
+
+        const rowIndex1 = names.indexOf(targetName1);
+        if (rowIndex1 === -1 || isNaN(parseInt(targetDay)) || isNaN(parseInt(targetNumber)) || parseInt(targetNumber) > 6) {
           return alert("נתונים לא תקינים");
         }
 
-        const phoneText = phones.map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`).join('\n');
-        const noteText = `כתובת: ${address}\n${codeText}\n${phoneText}\nסיבה: ${reason}\nהערות: ${comments}`;
-        const dbKey = `notes/${rowIndex}/${targetDay}/${targetNumber}`;
-        set(ref(db, dbKey), {
-          checked: false,
-          note: noteText.trim()
-        });
+        try {
+          await set(ref(db, `notes/${rowIndex1}/${targetDay}/${targetNumber}`), {
+            checked: false,
+            note: noteText.trim(),
+            teamColor: teamColor
+          });
+
+          if (isTeamWork) {
+            const rowIndex2 = names.indexOf(targetName2);
+            if (rowIndex2 === -1) return alert("נתונים לא תקינים עבור האדם השני");
+            await set(ref(db, `notes/${rowIndex2}/${targetDay}/${targetNumber}`), {
+              checked: false,
+              note: noteText.trim(),
+              teamColor: teamColor
+            });
+          }
+          if (!isTeamWork) {
+            alert('משימה נשמרה בהצלחה');
+          }
+        } catch (error) {
+          console.error('Error saving task:', error);
+          alert('שגיאה בשמירת המשימה');
+        }
       });
 
       document.getElementById('clear-all').addEventListener('click', () => {
-        set(ref(db, 'notes'), null).then(() => location.reload());
+        set(ref(db, 'notes'), null).then(() => location.reload()).catch(error => {
+          console.error('Error clearing tasks:', error);
+          alert('שגיאה בניקוי המשימות');
+        });
       });
 
       const today = new Date().getDay();
@@ -310,15 +434,6 @@
         daySelect.value = today;
       } else {
         daySelect.value = 0;
-      }
-
-      function updateTableDisplay() {
-        const selectedDay = parseInt(daySelect.value);
-        const isMobile = window.matchMedia("(max-width: 600px)").matches;
-        document.querySelectorAll('th[id^="day-"], td.cell').forEach((el) => {
-          const colIndex = parseInt(el.id?.split('-')[1]) || Array.from(el.parentNode.children).indexOf(el) - 1;
-          el.style.display = isMobile && colIndex !== selectedDay ? 'none' : '';
-        });
       }
 
       daySelect.addEventListener('change', updateTableDisplay);
@@ -400,16 +515,25 @@
       margin: 0 2px;
       position: relative;
       font-weight: bold;
+      padding: 2px;
+      border: none;
     }
     .no-task {
       color: black;
     }
     .has-task {
-      color: red;
+      color: #FF0000;
     }
     .completed {
-      color: green;
+      color: #008000;
     }
+    .team-blue { color: #007BFF; border: 1px solid #007BFF; border-radius: 3px; }
+    .team-yellow { color: #FFC107; border: 1px solid #FFC107; border-radius: 3px; }
+    .team-purple { color: #800080; border: 1px solid #800080; border-radius: 3px; }
+    .team-orange { color: #FF8C00; border: 1px solid #FF8C00; border-radius: 3px; }
+    .team-pink { color: #FF69B4; border: 1px solid #FF69B4; border-radius: 3px; }
+    .team-cyan { color: #00CED1; border: 1px solid #00CED1; border-radius: 3px; }
+    .team-magenta { color: #C71585; border: 1px solid #C71585; border-radius: 3px; }
     .tooltip {
       display: none;
       position: absolute;
@@ -627,72 +751,46 @@
       padding: 3px;
       margin-left: 5px;
     }
+    .team-work-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .team-work-row select {
+      width: 60%;
+      padding: 5px;
+      font-size: 0.9em;
+      margin-left: 5px;
+    }
+    #target-name-2-container {
+      display: none;
+      margin-bottom: 8px;
+    }
 
     @media (max-width: 600px) {
-      body {
-        padding: 10px;
-      }
-      .header-image {
-        max-width: 150px;
-        margin: 5px auto;
-      }
-      table {
-        font-size: 0.85em;
-      }
-      th, td {
-        padding: 5px;
-      }
-      .checkboxes label {
-        margin: 0 1px;
-      }
-      .tooltip {
-        max-width: 150px;
-        font-size: 0.8em;
-      }
-      #day-select {
-        width: 150px;
-        font-size: 0.9em;
-      }
-      #admin-button, #admin-panel {
-        display: none;
-      }
-      #single-panel {
-        padding: 10px;
-      }
-      .copy-phone {
-        display: inline-block;
-      }
-      .phone-number {
-        width: 60%;
-      }
-      .phone-name {
-        width: 40%;
-      }
-      .code-row input[type="text"] {
-        width: 55%;
-      }
-      .checkbox-container {
-        width: 45%;
-      }
-      .checkbox-container label {
-        font-size: 0.85em;
-      }
-      .code-options select {
-        width: 55%;
-      }
+      body { padding: 10px; }
+      .header-image { max-width: 150px; margin: 5px auto; }
+      table { font-size: 0.85em; }
+      th, td { padding: 5px; }
+      .checkboxes label { margin: 0 1px; }
+      .tooltip { max-width: 150px; font-size: 0.8em; }
+      #day-select { width: 150px; font-size: 0.9em; }
+      #admin-button, #admin-panel { display: none; }
+      #single-panel { padding: 10px; }
+      .copy-phone { display: inline-block; }
+      .phone-number { width: 60%; }
+      .phone-name { width: 40%; }
+      .code-row input[type="text"] { width: 55%; }
+      .checkbox-container { width: 45%; }
+      .checkbox-container label { font-size: 0.85em; }
+      .code-options select { width: 55%; }
+      .team-work-row select { width: 55%; }
     }
 
     @media (min-width: 601px) {
-      #day-select {
-        display: none;
-      }
-      .checkboxes input[type="checkbox"] {
-        pointer-events: none;
-      }
-      .checkboxes input[type="checkbox"]:disabled {
-        opacity: 1;
-        cursor: default;
-      }
+      #day-select { display: none; }
+      .checkboxes input[type="checkbox"] { pointer-events: none; }
+      .checkboxes input[type="checkbox"]:disabled { opacity: 1; cursor: default; }
     }
   </style>
 </head>
@@ -730,13 +828,31 @@
   </div>
   <div id="single-panel">
     <label>שם:<span class="required">*</span>
-      <select id="target-name" required>
-        <option value="">בחר שם</option>
-        <option>טימור</option>
-        <option>יעקב</option>
-        <option>אלי</option>
-      </select>
+      <div class="team-work-row">
+        <select id="target-name" required>
+          <option value="">בחר שם</option>
+          <option>טימור</option>
+          <option>יעקב</option>
+          <option>אלי</option>
+        </select>
+        <div class="checkbox-container">
+          <input type="checkbox" id="team-work">
+          <label for="team-work">עבודת צוות</label>
+        </div>
+      </div>
     </label>
+    <div id="target-name-2-container">
+      <label>שם שני:<span class="required">*</span>
+        <div class="team-work-row">
+          <select id="target-name-2" required>
+            <option value="">בחר שם</option>
+            <option>טימור</option>
+            <option>יעקב</option>
+            <option>אלי</option>
+          </select>
+        </div>
+      </label>
+    </div>
     <label>יום:<span class="required">*</span>
       <select id="target-day" required>
         <option value="">בחר יום</option>
@@ -841,6 +957,5 @@
       <button id="back-cancel">ביטול</button>
     </div>
   </div>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'93eb1f9ff9fb6777',t:'MTc0NzA2NTU2OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
 </body>
 </html>
