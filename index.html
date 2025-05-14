@@ -25,7 +25,7 @@
     const isAdmin = { status: false };
     const names = ["טימור", "יעקב", "אלי"];
     const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
-    const teamColors = ['blue', 'yellow', 'purple', 'orange', 'pink', 'cyan', 'magenta'];
+    const teamColors = ['cyan'];
     const taskNumbers = [1, 2, 3, 4, 5, 6];
 
     function createCheckboxCell(cell, rowIndex, colIndex) {
@@ -92,15 +92,16 @@
             const snapshot = await get(ref(db, dbKey));
             const currentData = snapshot.val() || { note: 'אין מידע', teamColor: null, checked: false };
             const newText = prompt('ערוך מידע עבור תיבה זו (השאר ריק למחיקה):', currentData.note);
-
+            if (newText === null) {
+              return; // Отмена редактирования, ничего не делаем
+            }
             try {
-              if (newText === null || newText.trim() === '') {
+              if (newText.trim() === '') {
                 await set(ref(db, dbKey), {
                   checked: false,
                   note: 'אין מידע',
                   teamColor: null
                 });
-
                 if (currentData.teamColor) {
                   for (let otherRowIndex = 0; otherRowIndex < names.length; otherRowIndex++) {
                     if (otherRowIndex !== rowIndex) {
@@ -242,10 +243,8 @@
         }
       });
 
-      // Скрыть второе имя при сбросе team-work
       document.getElementById('target-name-2-container').style.display = 'none';
 
-      // Сбросить видимость полей кодов
       ['entry', 'parking', 'roof'].forEach(type => {
         const codeInput = document.getElementById(`code-${type}`);
         const optionsDiv = document.getElementById(`code-${type}-options`);
@@ -274,7 +273,6 @@
         createCheckboxCell(cell, rowIndex, colIndex);
       });
 
-      // Сброс чекбоксов при загрузке страницы
       resetAdminPanelCheckboxes();
 
       document.getElementById('admin-button').addEventListener('click', () => {
@@ -370,7 +368,7 @@
 
         const phoneText = phones.map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`).join('\n');
         const noteText = `כתובת: ${address}\n${codeText}\n${phoneText}\nסיבה: ${reason}\nהערות: ${comments}`;
-        const teamColor = isTeamWork ? teamColors[Math.floor(Math.random() * teamColors.length)] : null;
+        const teamColor = isTeamWork ? 'cyan' : null;
 
         const rowIndex1 = names.indexOf(targetName1);
         if (rowIndex1 === -1 || isNaN(parseInt(targetDay)) || isNaN(parseInt(targetNumber)) || parseInt(targetNumber) > 6) {
@@ -527,13 +525,7 @@
     .completed {
       color: #008000;
     }
-    .team-blue { color: #007BFF; border: 1px solid #007BFF; border-radius: 3px; }
-    .team-yellow { color: #FFC107; border: 1px solid #FFC107; border-radius: 3px; }
-    .team-purple { color: #800080; border: 1px solid #800080; border-radius: 3px; }
-    .team-orange { color: #FF8C00; border: 1px solid #FF8C00; border-radius: 3px; }
-    .team-pink { color: #FF69B4; border: 1px solid #FF69B4; border-radius: 3px; }
     .team-cyan { color: #00CED1; border: 1px solid #00CED1; border-radius: 3px; }
-    .team-magenta { color: #C71585; border: 1px solid #C71585; border-radius: 3px; }
     .tooltip {
       display: none;
       position: absolute;
