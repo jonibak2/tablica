@@ -29,111 +29,111 @@
     const taskNumbers = [1, 2, 3, 4, 5, 6];
 
     function createCheckboxCell(cell, rowIndex, colIndex) {
-      const container = document.createElement('div');
-      container.className = 'checkboxes';
+    const container = document.createElement('div');
+    container.className = 'checkboxes';
 
-      taskNumbers.forEach((taskNum, i) => {
+    taskNumbers.forEach((taskNum, i) => {
         const label = document.createElement('label');
         label.innerText = taskNum;
         label.className = 'no-task';
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.disabled = window.matchMedia("(min-width: 601px)").matches;
         const dbKey = `notes/${rowIndex}/${colIndex}/${i + 1}`;
 
         const tooltip = document.createElement('div');
         tooltip.className = 'tooltip';
 
         onValue(ref(db, dbKey), (snapshot) => {
-          const data = snapshot.val();
-          checkbox.checked = data?.checked || false;
-          tooltip.innerText = data?.note || '';
-          label.className = data === null ? 'no-task' :
-                            checkbox.checked ? 'completed' :
-                            data?.teamColor ? `team-${data.teamColor}` :
-                            data?.note ? 'has-task' :
-                            'no-task';
+            const data = snapshot.val();
+            checkbox.checked = data?.checked || false;
+            tooltip.innerText = data?.note || '';
+            label.className = data === null ? 'no-task' :
+                              checkbox.checked ? 'completed' :
+                              data?.teamColor ? `team_${data.teamColor}` :
+                              data?.note ? 'has-task' :
+                              'no-task';
         });
 
         checkbox.addEventListener('change', async () => {
-          try {
-            const snapshot = await get(ref(db, dbKey));
-            const data = snapshot.val();
-            if (!data) return;
-            if (data?.teamColor) {
-              for (let otherRowIndex = 0; otherRowIndex < names.length; otherRowIndex++) {
-                if (otherRowIndex !== rowIndex) {
-                  const otherKey = `notes/${otherRowIndex}/${colIndex}/${i + 1}`;
-                  const otherSnapshot = await get(ref(db, otherKey));
-                  const otherData = otherSnapshot.val();
-                  if (otherData?.note === data.note && otherData?.teamColor === data.teamColor) {
-                    await set(ref(db, otherKey), {
-                      checked: checkbox.checked,
-                      note: data.note,
-                      teamColor: data.teamColor
-                    });
-                  }
+            try {
+                const snapshot = await get(ref(db, dbKey));
+                const data = snapshot.val();
+                if (!data) return;
+                const teamColor = data.teamColor !== undefined ? data.teamColor : null;
+                if (teamColor) {
+                    for (let otherRowIndex = 0; otherRowIndex < names.length; otherRowIndex++) {
+                        if (otherRowIndex !== rowIndex) {
+                            const otherKey = `notes/${otherRowIndex}/${colIndex}/${i + 1}`;
+                            const otherSnapshot = await get(ref(db, otherKey));
+                            const otherData = otherSnapshot.val();
+                            if (otherData?.note === data.note && otherData?.teamColor === teamColor) {
+                                await set(ref(db, otherKey), {
+                                    checked: checkbox.checked,
+                                    note: data.note,
+                                    teamColor: teamColor
+                                });
+                            }
+                        }
+                    }
                 }
-              }
+                await set(ref(db, dbKey), {
+                    checked: checkbox.checked,
+                    note: data.note,
+                    teamColor: teamColor
+                });
+            } catch (error) {
+                console.error('Error updating task:', error);
+                alert('שגיאה בעדכון המשימה');
             }
-            await set(ref(db, dbKey), {
-              checked: checkbox.checked,
-              note: data.note,
-              teamColor: data.teamColor
-            });
-          } catch (error) {
-            console.error('Error updating task:', error);
-            alert('שגיאה בעדכון המשימה');
-          }
         });
 
         label.addEventListener('click', async (e) => {
-          if (isAdmin.status && e.target !== checkbox) {
-            e.preventDefault();
-            const snapshot = await get(ref(db, dbKey));
-            const currentData = snapshot.val() || { note: '', teamColor: null, checked: false };
-            const newText = prompt('ערוך מידע עבור תיבה זו (השאר ריק למחיקה):', currentData.note);
-            if (newText === null) {
-              return;
-            }
-            try {
-              if (newText.trim() === '') {
-                await set(ref(db, dbKey), null);
-                if (currentData.teamColor) {
-                  for (let otherRowIndex = 0; otherRowIndex < names.length; otherRowIndex++) {
-                    if (otherRowIndex !== rowIndex) {
-                      const otherKey = `notes/${otherRowIndex}/${colIndex}/${i + 1}`;
-                      const otherSnapshot = await get(ref(db, otherKey));
-                      const otherData = otherSnapshot.val();
-                      if (otherData?.note === currentData.note && otherData?.teamColor === currentData.teamColor) {
-                        await set(ref(db, otherKey), null);
-                      }
-                    }
-                  }
+            if (isAdmin.status && e.target !== checkbox) {
+                e.preventDefault();
+                const snapshot = await get(ref(db, dbKey));
+                const currentData = snapshot.val() || { note: '', teamColor: null, checked: false };
+                const newText = prompt('ערוך מידע עבור תיבה זו (השאר ריק למחיקה):', currentData.note);
+                if (newText === null) {
+                    return;
                 }
-              } else {
-                await set(ref(db, dbKey), {
-                  checked: currentData.checked,
-                  note: newText,
-                  teamColor: currentData.teamColor
-                });
-              }
-            } catch (error) {
-              console.error('Error updating note:', error);
-              alert('שגיאה בעדכון ההערה');
+                try {
+                    if (newText.trim() === '') {
+                        await set(ref(db, dbKey), null);
+                        if (currentData.teamColor) {
+                            for (let otherRowIndex = 0; otherRowIndex < names.length; otherRowIndex++) {
+                                if (otherRowIndex !== rowIndex) {
+                                    const otherKey = `notes/${otherRowIndex}/${colIndex}/${i + 1}`;
+                                    const otherSnapshot = await get(ref(db, otherKey));
+                                    const otherData = otherSnapshot.val();
+                                    if (otherData?.note === currentData.note && otherData?.teamColor === currentData.teamColor) {
+                                        await set(ref(db, otherKey), null);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        await set(ref(db, dbKey), {
+                            checked: currentData.checked,
+                            note: newText,
+                            teamColor: currentData.teamColor
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error updating note:', error);
+                    alert('שגיאה בעדכון ההערה');
+                }
             }
-          }
         });
 
         setupTaskOverlay(label, checkbox, tooltip);
         label.appendChild(checkbox);
         label.appendChild(tooltip);
         container.appendChild(label);
-      });
+    });
 
-      cell.appendChild(container);
-    }
+    cell.appendChild(container);
+}
 
     function setupTaskOverlay(label, checkbox, tooltip) {
       let touchTimer;
@@ -149,23 +149,12 @@
             const phoneMatch = line.match(/טלפון \d+: ([^,]+), שם: (.*)/);
             if (phoneMatch) {
               const phoneNumber = phoneMatch[1].trim();
-              return `<p>${line}<button class="copy-phone" data-phone="${phoneNumber}">📋</button></p>`;
+              return `<p>${line}<a href="tel:${phoneNumber}" class="call-phone">📞</a></p>`;
             }
           }
           return `<p>${line.trim()}</p>`;
         }).join('');
         overlay.style.display = 'flex';
-
-        document.querySelectorAll('.copy-phone').forEach(button => {
-          button.addEventListener('click', () => {
-            const phone = button.getAttribute('data-phone');
-            if (navigator.clipboard) {
-              navigator.clipboard.writeText(phone).then(() => alert('המספר הועתק')).catch(() => alert('שגיאה בהעתקת המספר'));
-            } else {
-              alert('פונקציית ההעתקה לא נתמכת בדפדפן זה');
-            }
-          });
-        });
       };
 
       label.addEventListener('touchstart', (e) => {
@@ -347,7 +336,7 @@
           parking: {
             noCode: document.getElementById('no-code-parking').checked,
             code: document.getElementById('code-parking').value.trim(),
-            option: document.getElementById('code-parking-option').value
+            option: document.getACD('code-parking-option').value
           },
           roof: {
             noCode: document.getElementById('no-code-roof').checked,
@@ -404,9 +393,7 @@
               teamColor: teamColor
             });
           }
-          if (!isTeamWork) {
-            alert('משימה נשמרה בהצלחה');
-          }
+          alert('משימה נשמרה בהצלחה');
         } catch (error) {
           console.error('Error saving task:', error);
           alert('שגיאה בשמירת המשימה');
@@ -487,9 +474,6 @@
       daySelect.addEventListener('change', updateTableDisplay);
       window.addEventListener('resize', () => {
         updateTableDisplay();
-        document.querySelectorAll('.checkboxes input[type="checkbox"]').forEach(checkbox => {
-          checkbox.disabled = window.matchMedia("(min-width: 601px)").matches;
-        });
       });
       updateTableDisplay();
 
@@ -575,7 +559,7 @@
     .completed {
       color: #008000;
     }
-    .team-cyan { color: #00CED1; border: 1px solid #00CED1; border-radius: 3px; }
+    .team_cyan { color: #00CED1; border: 1px solid #00CED1; border-radius: 3px; }
     .tooltip {
       display: none;
       position: absolute;
@@ -704,7 +688,7 @@
       align-items: center;
       justify-content: flex-end;
     }
-    .copy-phone {
+    .call-phone {
       display: none;
       width: auto;
       height: auto;
@@ -716,6 +700,8 @@
       margin-right: 5px;
       line-height: 1;
       text-align: center;
+      text-decoration: none;
+      color: black;
     }
     #back-confirm-overlay {
       display: none;
@@ -819,7 +805,7 @@
       #day-select { width: 150px; font-size: 0.9em; }
       #admin-button, #admin-panel { display: none; }
       #single-panel { padding: 10px; }
-      .copy-phone { display: inline-block; }
+      .call-phone { display: inline-block; }
       .phone-number { width: 60%; }
       .phone-name { width: 40%; }
       .code-row input[type="text"] { width: 55%; }
@@ -831,7 +817,6 @@
 
     @media (min-width: 601px) {
       #day-select { display: none; }
-      .checkboxes input[type="checkbox"] { pointer-events: none; }
       .checkboxes input[type="checkbox"]:disabled { opacity: 1; cursor: default; }
     }
   </style>
