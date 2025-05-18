@@ -48,10 +48,11 @@
         onValue(ref(db, dbKey), (snapshot) => {
           const data = snapshot.val();
           checkbox.checked = data?.checked || false;
-          tooltip.innerText = data?.note || 'אין מידע';
-          label.className = checkbox.checked ? 'completed' :
+          tooltip.innerText = data?.note || '';
+          label.className = data === null ? 'no-task' :
+                            checkbox.checked ? 'completed' :
                             data?.teamColor ? `team-${data.teamColor}` :
-                            (data?.note && data.note !== 'אין מידע') ? 'has-task' :
+                            data?.note ? 'has-task' :
                             'no-task';
         });
 
@@ -59,6 +60,7 @@
           try {
             const snapshot = await get(ref(db, dbKey));
             const data = snapshot.val();
+            if (!data) return;
             if (data?.teamColor) {
               for (let otherRowIndex = 0; otherRowIndex < names.length; otherRowIndex++) {
                 if (otherRowIndex !== rowIndex) {
@@ -77,8 +79,8 @@
             }
             await set(ref(db, dbKey), {
               checked: checkbox.checked,
-              note: data?.note || tooltip.innerText,
-              teamColor: data?.teamColor || null
+              note: data.note,
+              teamColor: data.teamColor
             });
           } catch (error) {
             console.error('Error updating task:', error);
@@ -90,18 +92,14 @@
           if (isAdmin.status && e.target !== checkbox) {
             e.preventDefault();
             const snapshot = await get(ref(db, dbKey));
-            const currentData = snapshot.val() || { note: 'אין מידע', teamColor: null, checked: false };
+            const currentData = snapshot.val() || { note: '', teamColor: null, checked: false };
             const newText = prompt('ערוך מידע עבור תיבה זו (השאר ריק למחיקה):', currentData.note);
             if (newText === null) {
-              return; // Отмена редактирования, ничего не делаем
+              return;
             }
             try {
               if (newText.trim() === '') {
-                await set(ref(db, dbKey), {
-                  checked: false,
-                  note: 'אין מידע',
-                  teamColor: null
-                });
+                await set(ref(db, dbKey), null);
                 if (currentData.teamColor) {
                   for (let otherRowIndex = 0; otherRowIndex < names.length; otherRowIndex++) {
                     if (otherRowIndex !== rowIndex) {
@@ -109,11 +107,7 @@
                       const otherSnapshot = await get(ref(db, otherKey));
                       const otherData = otherSnapshot.val();
                       if (otherData?.note === currentData.note && otherData?.teamColor === currentData.teamColor) {
-                        await set(ref(db, otherKey), {
-                          checked: false,
-                          note: 'אין מידע',
-                          teamColor: null
-                        });
+                        await set(ref(db, otherKey), null);
                       }
                     }
                   }
@@ -266,6 +260,25 @@
       });
     }
 
+    function getWeekDateRange() {
+      const now = new Date();
+      const sunday = new Date(now);
+      sunday.setDate(now.getDate() - now.getDay());
+      const thursday = new Date(sunday);
+      thursday.setDate(sunday.getDate() + 4);
+      
+      const formatDate = (date) => {
+        const dd = String(date.getDate()).padStart(2, '0');
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        return `${dd}-${mm}`;
+      };
+      
+      const weekNumber = Math.ceil((sunday - new Date(sunday.getFullYear(), 0, 1)) / (7 * 24 * 60 * 60 * 1000));
+      const dateRange = `${formatDate(sunday)}_${formatDate(thursday)}`;
+      
+      return { weekNumber, dateRange };
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.cell').forEach((cell, i) => {
         const rowIndex = Math.floor(i / 5);
@@ -405,6 +418,43 @@
           console.error('Error clearing tasks:', error);
           alert('שגיאה בניקוי המשימות');
         });
+      });
+
+      document.getElementById('save-to-archive').addEventListener('click', async () => {
+        try {
+          const snapshot = await get(ref(db, 'notes'));
+          const notesData = snapshot.val() || {};
+          const { weekNumber, dateRange } = getWeekDateRange();
+          
+          const archiveData = {};
+          names.forEach((name, rowIndex) => {
+            if (notesData[rowIndex]) {
+              archiveData[rowIndex] = {};
+              dayNames.forEach((_, colIndex) => {
+                if (notesData[rowIndex][colIndex]) {
+                  archiveData[rowIndex][colIndex] = {};
+                  taskNumbers.forEach(taskNum => {
+                    const taskData = notesData[rowIndex][colIndex][taskNum];
+                    if (taskData && taskData.note) {
+                      archiveData[rowIndex][colIndex][taskNum] = taskData;
+                    }
+                  });
+                }
+              });
+            }
+          });
+
+          if (Object.keys(archiveData).length === 0) {
+            alert('אין משימות לשמירה בארכיון');
+            return;
+          }
+
+          await set(ref(db, `archive/week_${weekNumber}/${dateRange}`), archiveData);
+          alert(`המשימות נשמרו בארכיון ${dateRange} בהצלחה`);
+        } catch (error) {
+          console.error('Error saving to archive:', error);
+          alert('שגיאה בשמירת הארכיון');
+        }
       });
 
       const today = new Date().getDay();
@@ -936,6 +986,7 @@
     </label>
     <button id="single-insert">💾 שמור משימה</button>
     <button id="clear-all">🗑️ נקה הכל</button>
+    <button id="save-to-archive">📥 שמור בארכיון</button>
     <button id="admin-exit">יציאה ממצב מנהל</button>
   </div>
 
