@@ -1119,12 +1119,16 @@
   document.addEventListener('DOMContentLoaded', function () {
     document.body.addEventListener('click', function (e) {
       if (e.target.classList.contains('call-phone')) {
-        // Prevent overlay close
         e.stopPropagation();
-        // Find the phone number from the href
+        // Try to trigger tel: link via temporary <a>
         const href = e.target.getAttribute('href');
         if (href && href.startsWith('tel:')) {
-          window.location.href = href;
+          const a = document.createElement('a');
+          a.href = href;
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => document.body.removeChild(a), 100);
         }
       }
     }, true);
