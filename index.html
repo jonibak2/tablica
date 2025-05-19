@@ -32,6 +32,11 @@
     const container = document.createElement('div');
     container.className = 'checkboxes';
 
+    // Detect if device is mobile (touch screen or small width)
+    const isMobile = window.matchMedia("(max-width: 600px)").matches ||
+      ('ontouchstart' in window) ||
+      (navigator.userAgent.match(/Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i));
+
     taskNumbers.forEach((taskNum, i) => {
         const label = document.createElement('label');
         label.innerText = taskNum;
@@ -39,6 +44,9 @@
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
+        // Disable checkbox on desktop, enable on mobile
+        checkbox.disabled = !isMobile;
+
         const dbKey = `notes/${rowIndex}/${colIndex}/${i + 1}`;
 
         const tooltip = document.createElement('div');
