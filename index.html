@@ -541,15 +541,15 @@
       position: relative;
     }
     th {
-      background: #70ac4c;
+      background: #83a737;
       color: white;
     }
     .today {
-      background: #F0F4C3 !important;
-      color: black;
+      background: #965fa9 !important;
+      color: rgb(255, 255, 255);
     }
     th.name {
-      background: #f09c9c;
+      background: #fc9247;
     }
     .checkboxes label {
       display: inline-block;
@@ -597,7 +597,7 @@
       margin: 10px auto;
       padding: 8px 12px;
       font-size: 0.9em;
-      background: #70ac4c;
+      background: #83a737;
       color: white;
       border: none;
       border-radius: 4px;
@@ -650,7 +650,7 @@
       padding: 5px;
       font-size: 1em;
       width: auto;
-      background: #70ac4c;
+      background: #83a737;
       color: white;
       border: none;
       border-radius: 4px;
@@ -736,7 +736,7 @@
       margin-top: 10px;
       padding: 8px 16px;
       font-size: 1em;
-      background: #70ac4c;
+      background: #83a737;
       color: white;
       border: none;
       border-radius: 4px;
@@ -828,7 +828,76 @@
       #day-select { display: none; }
       .checkboxes input[type="checkbox"]:disabled { opacity: 1; cursor: default; }
     }
-  </style>
+    .faq-button {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background-color: #83a737;
+    color: white;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    font-weight: bold;
+    font-size: 20px;
+    cursor: pointer;
+    text-align: center;
+    line-height: 36px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    z-index: 9999;
+    transition: background-color 0.3s ease;
+  }
+
+  .faq-button:hover {
+    background-color: #83a737;
+  }
+
+  .faq-popup {
+    position: fixed;
+    bottom: 70px;
+    left: 20px;
+    width: 320px;
+    max-height: 400px;
+    overflow-y: auto;
+    background-color: #ffffff;
+    border: 2px solid #83a737;
+    border-radius: 12px;
+    padding: 16px;
+    font-family: sans-serif;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    display: none;
+    direction: rtl;
+    z-index: 9999;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .faq-item {
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    border-radius: 8px;
+    padding: 6px;
+  }
+
+  .faq-item:hover {
+    background-color: #f1f1f1;
+  }
+
+  .faq-question {
+    font-weight: bold;
+    color: #333;
+  }
+
+  .faq-answer {
+    display: none;
+    margin-top: 6px;
+    color: #555;
+    font-size: 14px;
+  }
+</style>
 </head>
 <body>
   <img src="utech.jpg" alt="Utech Logo" class="header-image">
@@ -994,79 +1063,6 @@
       <button id="back-cancel">ביטול</button>
     </div>
   </div>
-<style>
-  .faq-button {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    background-color: #4caf50;
-    color: white;
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
-    font-weight: bold;
-    font-size: 20px;
-    cursor: pointer;
-    text-align: center;
-    line-height: 36px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-    z-index: 9999;
-    transition: background-color 0.3s ease;
-  }
-
-  .faq-button:hover {
-    background-color: #45a049;
-  }
-
-  .faq-popup {
-    position: fixed;
-    bottom: 70px;
-    left: 20px;
-    width: 320px;
-    max-height: 400px;
-    overflow-y: auto;
-    background-color: #ffffff;
-    border: 2px solid #4caf50;
-    border-radius: 12px;
-    padding: 16px;
-    font-family: sans-serif;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    display: none;
-    direction: rtl;
-    z-index: 9999;
-    animation: fadeIn 0.3s ease;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .faq-item {
-    margin-bottom: 12px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    border-radius: 8px;
-    padding: 6px;
-  }
-
-  .faq-item:hover {
-    background-color: #f1f1f1;
-  }
-
-  .faq-question {
-    font-weight: bold;
-    color: #333;
-  }
-
-  .faq-answer {
-    display: none;
-    margin-top: 6px;
-    color: #555;
-    font-size: 14px;
-  }
-</style>
-
 <div class="faq-button" onclick="toggleFaq()">i</div>
 
 <div class="faq-popup" id="faqPopup">
