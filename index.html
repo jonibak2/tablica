@@ -157,6 +157,7 @@
             const phoneMatch = line.match(/טלפון \d+: ([^,]+), שם: (.*)/);
             if (phoneMatch) {
               const phoneNumber = phoneMatch[1].trim();
+              // If device can make calls, clicking will open dialer
               return `<p>${line}<a href="tel:${phoneNumber}" class="call-phone">📞</a></p>`;
             }
           }
@@ -1114,25 +1115,6 @@
     const answer = element.querySelector('.faq-answer');
     answer.style.display = (answer.style.display === 'block') ? 'none' : 'block';
   }
-
-  // Ensure 📞 button works on all devices (including iOS/Safari)
-  document.addEventListener('DOMContentLoaded', function () {
-    document.body.addEventListener('click', function (e) {
-      if (e.target.classList.contains('call-phone')) {
-        e.stopPropagation();
-        // Try to trigger tel: link via temporary <a>
-        const href = e.target.getAttribute('href');
-        if (href && href.startsWith('tel:')) {
-          const a = document.createElement('a');
-          a.href = href;
-          a.style.display = 'none';
-          document.body.appendChild(a);
-          a.click();
-          setTimeout(() => document.body.removeChild(a), 100);
-        }
-      }
-    }, true);
-  });
 </script>
 </body>
 </html>
