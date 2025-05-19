@@ -1114,6 +1114,21 @@
     const answer = element.querySelector('.faq-answer');
     answer.style.display = (answer.style.display === 'block') ? 'none' : 'block';
   }
+
+  // Ensure 📞 button works on all devices (including iOS/Safari)
+  document.addEventListener('DOMContentLoaded', function () {
+    document.body.addEventListener('click', function (e) {
+      if (e.target.classList.contains('call-phone')) {
+        // Prevent overlay close
+        e.stopPropagation();
+        // Find the phone number from the href
+        const href = e.target.getAttribute('href');
+        if (href && href.startsWith('tel:')) {
+          window.location.href = href;
+        }
+      }
+    }, true);
+  });
 </script>
 </body>
 </html>
