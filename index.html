@@ -29,7 +29,7 @@
       const db = getDatabase(app);
 
       const isAdmin = { status: false };
-      const names = ["טימור", "יעקב", "אלי"];
+      const names = ["טימור", "יעקב", "אלי", "טכנאי ביצוע"];
       const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
       const teamColors = ["cyan"];
       const taskNumbers = [1, 2, 3, 4, 5, 6, 7];
@@ -38,12 +38,13 @@
         const container = document.createElement("div");
         container.className = "checkboxes";
 
+        // Чекбоксы разрешены только на мобильных (userAgent + touch)
         const isMobile =
-          window.matchMedia("(max-width: 600px)").matches ||
-          "ontouchstart" in window ||
-          navigator.userAgent.match(
-            /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i
-          );
+          /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i.test(
+            navigator.userAgent
+          ) ||
+          ("ontouchstart" in window &&
+            window.matchMedia("(max-width: 600px)").matches);
 
         taskNumbers.forEach((taskNum, i) => {
           const label = document.createElement("label");
@@ -52,8 +53,7 @@
 
           const checkbox = document.createElement("input");
           checkbox.type = "checkbox";
-          // Disable checkbox on desktop, enable on mobile
-          checkbox.disabled = !isMobile;
+          checkbox.disabled = !isMobile; // <-- Блокировка на десктопе
 
           const dbKey = `notes/${rowIndex}/${colIndex}/${i + 1}`;
 
@@ -532,23 +532,32 @@
             }
           });
 
-        document.getElementById("clear-all").addEventListener("click", () => {
-          set(ref(db, "notes"), null)
-            .then(() => location.reload())
-            .catch((error) => {
-              console.error("Error clearing tasks:", error);
-              alert("שגיאה בניקוי המשימות");
-            });
+        document.getElementById("admin-exit").addEventListener("click", () => {
+          isAdmin.status = false;
+          document.getElementById("single-panel").style.display = "none";
+          document.getElementById("admin-button").style.display = "block";
+          alert("יצאת ממצב ניהול");
         });
 
-        document
-          .getElementById("save-to-archive")
-          .addEventListener("click", async () => {
+        document.getElementById("team-work").addEventListener("change", () => {
+          document.getElementById("target-name-2-container").style.display =
+            document.getElementById("team-work").checked ? "block" : "none";
+        });
+
+        // --- Автоматическая архивация и очистка таблицы по четвергам после 23:00 ---
+        async function autoArchiveAndClearIfNeeded() {
+          const now = new Date();
+          // Четверг = 4, после 23:00
+          if (now.getDay() === 4 && now.getHours() >= 23) {
+            // всегда выполняется для теста
+            // Проверяем, была ли уже архивация в этот четверг (локально)
+            const { weekNumber, dateRange } = getWeekDateRange();
+            const archiveKey = `archive_done_${weekNumber}_${dateRange}`;
+            if (localStorage.getItem(archiveKey)) return;
+
             try {
               const snapshot = await get(ref(db, "notes"));
               const notesData = snapshot.val() || {};
-              const { weekNumber, dateRange } = getWeekDateRange();
-
               const archiveData = {};
               names.forEach((name, rowIndex) => {
                 if (notesData[rowIndex]) {
@@ -567,21 +576,23 @@
                 }
               });
 
-              if (Object.keys(archiveData).length === 0) {
-                alert("אין משימות לשמירה בארכיון");
-                return;
+              if (Object.keys(archiveData).length > 0) {
+                await set(
+                  ref(db, `archive/week_${weekNumber}/${dateRange}`),
+                  archiveData
+                );
+                await set(ref(db, "notes"), null); // Очистить таблицу
+                localStorage.setItem(archiveKey, "1");
               }
-
-              await set(
-                ref(db, `archive/week_${weekNumber}/${dateRange}`),
-                archiveData
-              );
-              alert(`המשימות נשמרו בארכיון ${dateRange} בהצלחה`);
             } catch (error) {
-              console.error("Error saving to archive:", error);
-              alert("שגיאה בשמירת הארכיון");
+              // Ошибки не блокируют дальнейшую работу
+              console.error("Auto-archive error:", error);
             }
-          });
+          }
+        }
+
+        // Вызов автоматической архивации при загрузке страницы
+        autoArchiveAndClearIfNeeded();
 
         const today = new Date().getDay();
         const now = new Date();
@@ -897,7 +908,7 @@
         padding: 8px 16px;
         font-size: 1em;
         background: #83a737;
-        color: white;
+        color: #fff;
         border: none;
         border-radius: 4px;
         cursor: pointer;
@@ -1154,6 +1165,14 @@
           <td class="cell"></td>
           <td class="cell"></td>
         </tr>
+        <tr>
+          <td>טכנאי ביצוע</td>
+          <td class="cell"></td>
+          <td class="cell"></td>
+          <td class="cell"></td>
+          <td class="cell"></td>
+          <td class="cell"></td>
+        </tr>
       </tbody>
     </table>
 
@@ -1161,6 +1180,53 @@
     <div id="admin-panel">
       <label>קוד גישה: <input type="password" id="admin-code" /></label>
       <button id="admin-confirm">אישור</button>
+    </div>
+    <div
+      id="archive-log-panel"
+      style="
+        display: none;
+        background: #fff;
+        border: 2px solid #965fa9;
+        padding: 20px;
+        margin: 20px auto;
+        border-radius: 12px;
+        max-width: 400px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 99999;
+      "
+    >
+      <h3 style="margin-top: 0; color: #965fa9">לוג ארכיב</h3>
+      <pre
+        id="archive-log"
+        style="
+          background: #f7f7fa;
+          padding: 12px;
+          border-radius: 8px;
+          min-height: 120px;
+          max-height: 300px;
+          overflow-y: auto;
+          font-size: 1em;
+          color: #222;
+        "
+      ></pre>
+      <button
+        id="archive-log-exit"
+        style="
+          margin-top: 10px;
+          background: #965fa9;
+          color: #fff;
+          border: none;
+          padding: 8px 20px;
+          border-radius: 6px;
+          cursor: pointer;
+        "
+      >
+        סגור
+      </button>
     </div>
     <div id="single-panel">
       <label
@@ -1171,6 +1237,7 @@
             <option>טימור</option>
             <option>יעקב</option>
             <option>אלי</option>
+            <option>טכנאי ביצוע</option>
           </select>
           <div class="checkbox-container">
             <input type="checkbox" id="team-work" />
@@ -1187,6 +1254,7 @@
               <option>טימור</option>
               <option>יעקב</option>
               <option>אלי</option>
+              <option>טכנאי ביצוע</option>
             </select>
           </div>
         </label>
@@ -1309,8 +1377,6 @@
         ></textarea>
       </label>
       <button id="single-insert">💾 שמור משימה</button>
-      <button id="clear-all">🗑️ נקה הכל</button>
-      <button id="save-to-archive">📥 שמור בארכיון</button>
       <button id="admin-exit">יציאה ממצב מנהל</button>
     </div>
 
