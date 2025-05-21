@@ -1,1116 +1,1376 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>טבלת משימות UTECH</title>
-  <link rel="icon" href="logo.jpg" type="image/jpeg">
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-    import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>טבלת משימות UTECH</title>
+    <link rel="icon" href="logo.jpg" type="image/jpeg" />
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+      import {
+        getDatabase,
+        ref,
+        set,
+        onValue,
+        get,
+      } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAFTYDz4TvUfiXx1F3xFer86WV-UMVRi7U",
-      authDomain: "tablichka-e2c39.firebaseapp.com",
-      databaseURL: "https://tablichka-e2c39-default-rtdb.firebaseio.com",
-      projectId: "tablichka-e2c39",
-      storageBucket: "tablichka-e2c39.appspot.com",
-      messagingSenderId: "218058227797",
-      appId: "1:218058227797:web:0525b8e6057350918c54dc"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
-    const isAdmin = { status: false };
-    const names = ["טימור", "יעקב", "אלי"];
-    const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
-    const teamColors = ['cyan'];
-    const taskNumbers = [1, 2, 3, 4, 5, 6];
-
-    function createCheckboxCell(cell, rowIndex, colIndex) {
-    const container = document.createElement('div');
-    container.className = 'checkboxes';
-
-    // Detect if device is mobile (touch screen or small width)
-    const isMobile = window.matchMedia("(max-width: 600px)").matches ||
-      ('ontouchstart' in window) ||
-      (navigator.userAgent.match(/Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i));
-
-    taskNumbers.forEach((taskNum, i) => {
-        const label = document.createElement('label');
-        label.innerText = taskNum;
-        label.className = 'no-task';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        // Disable checkbox on desktop, enable on mobile
-        checkbox.disabled = !isMobile;
-
-        const dbKey = `notes/${rowIndex}/${colIndex}/${i + 1}`;
-
-        const tooltip = document.createElement('div');
-        tooltip.className = 'tooltip';
-
-        onValue(ref(db, dbKey), (snapshot) => {
-            const data = snapshot.val();
-            checkbox.checked = data?.checked || false;
-            tooltip.innerText = data?.note || '';
-            label.className = data === null ? 'no-task' :
-                              checkbox.checked ? 'completed' :
-                              data?.teamColor ? `team_${data.teamColor}` :
-                              data?.note ? 'has-task' :
-                              'no-task';
-        });
-
-        checkbox.addEventListener('change', async () => {
-            try {
-                const snapshot = await get(ref(db, dbKey));
-                const data = snapshot.val();
-                if (!data) return;
-                const teamColor = data.teamColor !== undefined ? data.teamColor : null;
-                if (teamColor) {
-                    for (let otherRowIndex = 0; otherRowIndex < names.length; otherRowIndex++) {
-                        if (otherRowIndex !== rowIndex) {
-                            const otherKey = `notes/${otherRowIndex}/${colIndex}/${i + 1}`;
-                            const otherSnapshot = await get(ref(db, otherKey));
-                            const otherData = otherSnapshot.val();
-                            if (otherData?.note === data.note && otherData?.teamColor === teamColor) {
-                                await set(ref(db, otherKey), {
-                                    checked: checkbox.checked,
-                                    note: data.note,
-                                    teamColor: teamColor
-                                });
-                            }
-                        }
-                    }
-                }
-                await set(ref(db, dbKey), {
-                    checked: checkbox.checked,
-                    note: data.note,
-                    teamColor: teamColor
-                });
-            } catch (error) {
-                console.error('Error updating task:', error);
-                alert('שגיאה בעדכון המשימה');
-            }
-        });
-
-        label.addEventListener('click', async (e) => {
-            if (isAdmin.status && e.target !== checkbox) {
-                e.preventDefault();
-                const snapshot = await get(ref(db, dbKey));
-                const currentData = snapshot.val() || { note: '', teamColor: null, checked: false };
-                const newText = prompt('ערוך מידע עבור תיבה זו (השאר ריק למחיקה):', currentData.note);
-                if (newText === null) {
-                    return;
-                }
-                try {
-                    if (newText.trim() === '') {
-                        await set(ref(db, dbKey), null);
-                        if (currentData.teamColor) {
-                            for (let otherRowIndex = 0; otherRowIndex < names.length; otherRowIndex++) {
-                                if (otherRowIndex !== rowIndex) {
-                                    const otherKey = `notes/${otherRowIndex}/${colIndex}/${i + 1}`;
-                                    const otherSnapshot = await get(ref(db, otherKey));
-                                    const otherData = otherSnapshot.val();
-                                    if (otherData?.note === currentData.note && otherData?.teamColor === currentData.teamColor) {
-                                        await set(ref(db, otherKey), null);
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        await set(ref(db, dbKey), {
-                            checked: currentData.checked,
-                            note: newText,
-                            teamColor: currentData.teamColor
-                        });
-                    }
-                } catch (error) {
-                    console.error('Error updating note:', error);
-                    alert('שגיאה בעדכון ההערה');
-                }
-            }
-        });
-
-        setupTaskOverlay(label, checkbox, tooltip);
-        label.appendChild(checkbox);
-        label.appendChild(tooltip);
-        container.appendChild(label);
-    });
-
-    cell.appendChild(container);
-}
-
-    function setupTaskOverlay(label, checkbox, tooltip) {
-      let touchTimer;
-      const showTaskOverlay = () => {
-        const overlay = document.getElementById('task-overlay');
-        const overlayContent = document.getElementById('task-overlay-content');
-        let lines = tooltip.innerText.split(/[\r\n]+/);
-        if (lines.length === 1 && tooltip.innerText.includes('כתובת:')) {
-          lines = tooltip.innerText.split(/(?=כתובת:|קוד כניסה:|קוד חניון:|קוד גג:|טלפון \d+:|סיבה:|הערות:)/).filter(line => line.trim());
-        }
-        overlayContent.innerHTML = lines.map(line => {
-          if (line.match(/טלפון \d+:/)) {
-            const phoneMatch = line.match(/טלפון \d+: ([^,]+), שם: (.*)/);
-            if (phoneMatch) {
-              const phoneNumber = phoneMatch[1].trim();
-              // If device can make calls, clicking will open dialer
-              return `<p>${line}<a href="tel:${phoneNumber}" class="call-phone">📞</a></p>`;
-            }
-          }
-          return `<p>${line.trim()}</p>`;
-        }).join('');
-        overlay.style.display = 'flex';
+      const firebaseConfig = {
+        apiKey: "AIzaSyAFTYDz4TvUfiXx1F3xFer86WV-UMVRi7U",
+        authDomain: "tablichka-e2c39.firebaseapp.com",
+        databaseURL: "https://tablichka-e2c39-default-rtdb.firebaseio.com",
+        projectId: "tablichka-e2c39",
+        storageBucket: "tablichka-e2c39.appspot.com",
+        messagingSenderId: "218058227797",
+        appId: "1:218058227797:web:0525b8e6057350918c54dc",
       };
 
-      label.addEventListener('touchstart', (e) => {
-        if (e.target !== checkbox) {
-          e.preventDefault();
-          touchTimer = setTimeout(showTaskOverlay, 500);
-        }
-      });
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
 
-      label.addEventListener('touchend', () => clearTimeout(touchTimer));
-      label.addEventListener('touchcancel', () => clearTimeout(touchTimer));
-      label.addEventListener('mousedown', (e) => {
-        if (e.target !== checkbox) {
-          touchTimer = setTimeout(showTaskOverlay, 500);
-        }
-      });
-      label.addEventListener('mouseup', () => clearTimeout(touchTimer));
-    }
+      const isAdmin = { status: false };
+      const names = ["טימור", "יעקב", "אלי"];
+      const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
+      const teamColors = ["cyan"];
+      const taskNumbers = [1, 2, 3, 4, 5, 6, 7];
 
-    function setupPhoneEntries() {
-      let phoneCount = 1;
-      document.getElementById('add-phone').addEventListener('click', () => {
-        phoneCount++;
-        const phoneList = document.getElementById('phone-list');
-        const phoneEntry = document.createElement('div');
-        phoneEntry.className = 'phone-entry';
-        phoneEntry.innerHTML = `
+      function createCheckboxCell(cell, rowIndex, colIndex) {
+        const container = document.createElement("div");
+        container.className = "checkboxes";
+
+        const isMobile =
+          window.matchMedia("(max-width: 600px)").matches ||
+          "ontouchstart" in window ||
+          navigator.userAgent.match(
+            /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i
+          );
+
+        taskNumbers.forEach((taskNum, i) => {
+          const label = document.createElement("label");
+          label.innerText = taskNum;
+          label.className = "no-task";
+
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          // Disable checkbox on desktop, enable on mobile
+          checkbox.disabled = !isMobile;
+
+          const dbKey = `notes/${rowIndex}/${colIndex}/${i + 1}`;
+
+          const tooltip = document.createElement("div");
+          tooltip.className = "tooltip";
+
+          onValue(ref(db, dbKey), (snapshot) => {
+            const data = snapshot.val();
+            checkbox.checked = data?.checked || false;
+            tooltip.innerText = data?.note || "";
+            label.className =
+              data === null
+                ? "no-task"
+                : checkbox.checked
+                ? "completed"
+                : data?.teamColor
+                ? `team_${data.teamColor}`
+                : data?.note
+                ? "has-task"
+                : "no-task";
+          });
+
+          checkbox.addEventListener("change", async () => {
+            try {
+              const snapshot = await get(ref(db, dbKey));
+              const data = snapshot.val();
+              if (!data) return;
+              const teamColor =
+                data.teamColor !== undefined ? data.teamColor : null;
+              if (teamColor) {
+                for (
+                  let otherRowIndex = 0;
+                  otherRowIndex < names.length;
+                  otherRowIndex++
+                ) {
+                  if (otherRowIndex !== rowIndex) {
+                    const otherKey = `notes/${otherRowIndex}/${colIndex}/${
+                      i + 1
+                    }`;
+                    const otherSnapshot = await get(ref(db, otherKey));
+                    const otherData = otherSnapshot.val();
+                    if (
+                      otherData?.note === data.note &&
+                      otherData?.teamColor === teamColor
+                    ) {
+                      await set(ref(db, otherKey), {
+                        checked: checkbox.checked,
+                        note: data.note,
+                        teamColor: teamColor,
+                      });
+                    }
+                  }
+                }
+              }
+              await set(ref(db, dbKey), {
+                checked: checkbox.checked,
+                note: data.note,
+                teamColor: teamColor,
+              });
+            } catch (error) {
+              console.error("Error updating task:", error);
+              alert("שגיאה בעדכון המשימה");
+            }
+          });
+
+          label.addEventListener("click", async (e) => {
+            if (isAdmin.status && e.target !== checkbox) {
+              e.preventDefault();
+              const snapshot = await get(ref(db, dbKey));
+              const currentData = snapshot.val() || {
+                note: "",
+                teamColor: null,
+                checked: false,
+              };
+              const newText = prompt(
+                "ערוך מידע עבור תיבה זו (השאר ריק למחיקה):",
+                currentData.note
+              );
+              if (newText === null) {
+                return;
+              }
+              try {
+                if (newText.trim() === "") {
+                  await set(ref(db, dbKey), null);
+                  if (currentData.teamColor) {
+                    for (
+                      let otherRowIndex = 0;
+                      otherRowIndex < names.length;
+                      otherRowIndex++
+                    ) {
+                      if (otherRowIndex !== rowIndex) {
+                        const otherKey = `notes/${otherRowIndex}/${colIndex}/${
+                          i + 1
+                        }`;
+                        const otherSnapshot = await get(ref(db, otherKey));
+                        const otherData = otherSnapshot.val();
+                        if (
+                          otherData?.note === currentData.note &&
+                          otherData?.teamColor === currentData.teamColor
+                        ) {
+                          await set(ref(db, otherKey), null);
+                        }
+                      }
+                    }
+                  }
+                } else {
+                  await set(ref(db, dbKey), {
+                    checked: currentData.checked,
+                    note: newText,
+                    teamColor: currentData.teamColor,
+                  });
+                }
+              } catch (error) {
+                console.error("Error updating note:", error);
+                alert("שגיאה בעדכון ההערה");
+              }
+            }
+          });
+
+          setupTaskOverlay(label, checkbox, tooltip);
+          label.appendChild(checkbox);
+          label.appendChild(tooltip);
+          container.appendChild(label);
+        });
+
+        cell.appendChild(container);
+      }
+
+      function setupTaskOverlay(label, checkbox, tooltip) {
+        let touchTimer;
+        const showTaskOverlay = () => {
+          const overlay = document.getElementById("task-overlay");
+          const overlayContent = document.getElementById(
+            "task-overlay-content"
+          );
+          let lines = tooltip.innerText.split(/[\r\n]+/);
+          if (lines.length === 1 && tooltip.innerText.includes("כתובת:")) {
+            lines = tooltip.innerText
+              .split(
+                /(?=כתובת:|קוד כניסה:|קוד חניון:|קוד גג:|טלפון \d+:|סיבה:|הערות:)/
+              )
+              .filter((line) => line.trim());
+          }
+          overlayContent.innerHTML = lines
+            .map((line) => {
+              if (line.match(/טלפון \d+:/)) {
+                const phoneMatch = line.match(/טלפון \d+: ([^,]+), שם: (.*)/);
+                if (phoneMatch) {
+                  const phoneNumber = phoneMatch[1].trim();
+                  // If device can make calls, clicking will open dialer
+                  return `<p>${line}<a href="tel:${phoneNumber}" class="call-phone">📞</a></p>`;
+                }
+              }
+              return `<p>${line.trim()}</p>`;
+            })
+            .join("");
+          overlay.style.display = "flex";
+        };
+
+        label.addEventListener("touchstart", (e) => {
+          if (e.target !== checkbox) {
+            e.preventDefault();
+            touchTimer = setTimeout(showTaskOverlay, 500);
+          }
+        });
+
+        label.addEventListener("touchend", () => clearTimeout(touchTimer));
+        label.addEventListener("touchcancel", () => clearTimeout(touchTimer));
+        label.addEventListener("mousedown", (e) => {
+          if (e.target !== checkbox) {
+            touchTimer = setTimeout(showTaskOverlay, 500);
+          }
+        });
+        label.addEventListener("mouseup", () => clearTimeout(touchTimer));
+      }
+
+      function setupPhoneEntries() {
+        let phoneCount = 1;
+        document.getElementById("add-phone").addEventListener("click", () => {
+          phoneCount++;
+          const phoneList = document.getElementById("phone-list");
+          const phoneEntry = document.createElement("div");
+          phoneEntry.className = "phone-entry";
+          phoneEntry.innerHTML = `
           <input type="tel" class="phone-number" placeholder="הזן מספר טלפון" required>
           <input type="text" class="phone-name" placeholder="שם איש קשר" required>
           <button class="remove-phone">−</button>
         `;
-        phoneList.appendChild(phoneEntry);
+          phoneList.appendChild(phoneEntry);
 
-        phoneEntry.querySelector('.remove-phone').addEventListener('click', () => {
-          if (phoneCount > 1) {
-            phoneEntry.remove();
-            phoneCount--;
+          phoneEntry
+            .querySelector(".remove-phone")
+            .addEventListener("click", () => {
+              if (phoneCount > 1) {
+                phoneEntry.remove();
+                phoneCount--;
+              }
+            });
+        });
+      }
+
+      function setupCodeInputs() {
+        ["entry", "parking", "roof"].forEach((type) => {
+          const checkbox = document.getElementById(`no-code-${type}`);
+          const codeInput = document.getElementById(`code-${type}`);
+          const optionsDiv = document.getElementById(`code-${type}-options`);
+          const select = document.getElementById(`code-${type}-option`);
+
+          checkbox.addEventListener("change", () => {
+            codeInput.style.display = checkbox.checked ? "none" : "block";
+            optionsDiv.style.display = checkbox.checked ? "block" : "none";
+            select.value = "";
+          });
+        });
+      }
+
+      function resetAdminPanelCheckboxes() {
+        const checkboxes = [
+          "team-work",
+          "no-code-entry",
+          "no-code-parking",
+          "no-code-roof",
+        ];
+        checkboxes.forEach((id) => {
+          const checkbox = document.getElementById(id);
+          if (checkbox) {
+            checkbox.checked = false;
           }
         });
-      });
-    }
 
-    function setupCodeInputs() {
-      ['entry', 'parking', 'roof'].forEach(type => {
-        const checkbox = document.getElementById(`no-code-${type}`);
-        const codeInput = document.getElementById(`code-${type}`);
-        const optionsDiv = document.getElementById(`code-${type}-options`);
-        const select = document.getElementById(`code-${type}-option`);
+        document.getElementById("target-name-2-container").style.display =
+          "none";
 
-        checkbox.addEventListener('change', () => {
-          codeInput.style.display = checkbox.checked ? 'none' : 'block';
-          optionsDiv.style.display = checkbox.checked ? 'block' : 'none';
-          select.value = '';
-        });
-      });
-    }
-
-    function resetAdminPanelCheckboxes() {
-      const checkboxes = [
-        'team-work',
-        'no-code-entry',
-        'no-code-parking',
-        'no-code-roof'
-      ];
-      checkboxes.forEach(id => {
-        const checkbox = document.getElementById(id);
-        if (checkbox) {
-          checkbox.checked = false;
-        }
-      });
-
-      document.getElementById('target-name-2-container').style.display = 'none';
-
-      ['entry', 'parking', 'roof'].forEach(type => {
-        const codeInput = document.getElementById(`code-${type}`);
-        const optionsDiv = document.getElementById(`code-${type}-options`);
-        const select = document.getElementById(`code-${type}-option`);
-        if (codeInput && optionsDiv && select) {
-          codeInput.style.display = 'block';
-          optionsDiv.style.display = 'none';
-          select.value = '';
-        }
-      });
-    }
-
-    function updateTableDisplay() {
-      const selectedDay = parseInt(document.getElementById('day-select').value);
-      const isMobile = window.matchMedia("(max-width: 600px)").matches;
-      document.querySelectorAll('th[id^="day-"], td.cell').forEach(el => {
-        const colIndex = parseInt(el.id?.split('-')[1]) || Array.from(el.parentNode.children).indexOf(el) - 1;
-        el.style.display = isMobile && colIndex !== selectedDay ? 'none' : '';
-      });
-    }
-
-    function getWeekDateRange() {
-      const now = new Date();
-      const sunday = new Date(now);
-      sunday.setDate(now.getDate() - now.getDay());
-      const thursday = new Date(sunday);
-      thursday.setDate(sunday.getDate() + 4);
-      
-      const formatDate = (date) => {
-        const dd = String(date.getDate()).padStart(2, '0');
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        return `${dd}-${mm}`;
-      };
-      
-      const weekNumber = Math.ceil((sunday - new Date(sunday.getFullYear(), 0, 1)) / (7 * 24 * 60 * 60 * 1000));
-      const dateRange = `${formatDate(sunday)}_${formatDate(thursday)}`;
-      
-      return { weekNumber, dateRange };
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('.cell').forEach((cell, i) => {
-        const rowIndex = Math.floor(i / 5);
-        const colIndex = i % 5;
-        createCheckboxCell(cell, rowIndex, colIndex);
-      });
-
-      resetAdminPanelCheckboxes();
-
-      document.getElementById('admin-button').addEventListener('click', () => {
-        document.getElementById('admin-panel').style.display = 'block';
-      });
-
-      document.getElementById('admin-confirm').addEventListener('click', () => {
-        const code = document.getElementById('admin-code').value;
-        if (code === '1111') {
-          isAdmin.status = true;
-          alert('הכניסה בוצעה בהצלחה!');
-          document.getElementById('admin-panel').style.display = 'none';
-          document.getElementById('single-panel').style.display = 'block';
-          document.getElementById('admin-button').style.display = 'none';
-        } else {
-          alert('קוד שגוי!');
-        }
-      });
-
-      document.getElementById('admin-exit').addEventListener('click', () => {
-        isAdmin.status = false;
-        document.getElementById('single-panel').style.display = 'none';
-        document.getElementById('admin-button').style.display = 'block';
-        alert('יצאת ממצב ניהול');
-      });
-
-      document.getElementById('team-work').addEventListener('change', () => {
-        document.getElementById('target-name-2-container').style.display = document.getElementById('team-work').checked ? 'block' : 'none';
-      });
-
-      setupPhoneEntries();
-      setupCodeInputs();
-
-      document.getElementById('single-insert').addEventListener('click', async () => {
-        const isTeamWork = document.getElementById('team-work').checked;
-        const targetName1 = document.getElementById('target-name').value;
-        const targetName2 = isTeamWork ? document.getElementById('target-name-2').value : null;
-        const targetDay = document.getElementById('target-day').value;
-        const targetNumber = document.getElementById('target-number').value;
-        const address = document.getElementById('task-address').value.trim();
-        const reason = document.getElementById('task-reason').value.trim();
-        const comments = document.getElementById('task-comments').value.trim();
-
-        const phoneEntries = document.querySelectorAll('.phone-entry');
-        const phones = [];
-        for (let i = 0; i < phoneEntries.length; i++) {
-          const phone = phoneEntries[i].querySelector('.phone-number').value.trim();
-          const name = phoneEntries[i].querySelector('.phone-name').value.trim();
-          if (!phone || !name) return alert("נא למלא את כל שדות הטלפון והשמות");
-          phones.push({ phone, name });
-        }
-
-        const codes = {
-          entry: {
-            noCode: document.getElementById('no-code-entry').checked,
-            code: document.getElementById('code-entry').value.trim(),
-            option: document.getElementById('code-entry-option').value
-          },
-          parking: {
-            noCode: document.getElementById('no-code-parking').checked,
-            code: document.getElementById('code-parking').value.trim(),
-            option: document.getElementById('code-parking-option').value
-          },
-          roof: {
-            noCode: document.getElementById('no-code-roof').checked,
-            code: document.getElementById('code-roof').value.trim(),
-            option: document.getElementById('code-roof-option').value
+        ["entry", "parking", "roof"].forEach((type) => {
+          const codeInput = document.getElementById(`code-${type}`);
+          const optionsDiv = document.getElementById(`code-${type}-options`);
+          const select = document.getElementById(`code-${type}-option`);
+          if (codeInput && optionsDiv && select) {
+            codeInput.style.display = "block";
+            optionsDiv.style.display = "none";
+            select.value = "";
           }
+        });
+      }
+
+      function updateTableDisplay() {
+        const selectedDay = parseInt(
+          document.getElementById("day-select").value
+        );
+        const isMobile = window.matchMedia("(max-width: 600px)").matches;
+        document.querySelectorAll('th[id^="day-"], td.cell').forEach((el) => {
+          const colIndex =
+            parseInt(el.id?.split("-")[1]) ||
+            Array.from(el.parentNode.children).indexOf(el) - 1;
+          el.style.display = isMobile && colIndex !== selectedDay ? "none" : "";
+        });
+      }
+
+      function getWeekDateRange() {
+        const now = new Date();
+        const sunday = new Date(now);
+        sunday.setDate(now.getDate() - now.getDay());
+        const thursday = new Date(sunday);
+        thursday.setDate(sunday.getDate() + 4);
+
+        const formatDate = (date) => {
+          const dd = String(date.getDate()).padStart(2, "0");
+          const mm = String(date.getMonth() + 1).padStart(2, "0");
+          return `${dd}-${mm}`;
         };
 
-        const codeText = [
-          `קוד כניסה: ${codes.entry.noCode ? (codes.entry.option || 'לא צוין') : (codes.entry.code || 'לא צוין')}`,
-          `קוד חניון: ${codes.parking.noCode ? (codes.parking.option || 'לא צוין') : (codes.parking.code || 'לא צוין')}`,
-          `קוד גג: ${codes.roof.noCode ? (codes.roof.option || 'לא צוין') : (codes.roof.code || 'לא צוין')}`
-        ].join('\n');
+        const weekNumber = Math.ceil(
+          (sunday - new Date(sunday.getFullYear(), 0, 1)) /
+            (7 * 24 * 60 * 60 * 1000)
+        );
+        const dateRange = `${formatDate(sunday)}_${formatDate(thursday)}`;
 
-        if (!targetName1 || !targetDay || !targetNumber || !address || !reason || !comments) {
-          return alert("נא למלא את כל השדות");
-        }
+        return { weekNumber, dateRange };
+      }
 
-        if (isTeamWork && (!targetName2 || targetName1 === targetName2)) {
-          return alert("נא לבחור שני אנשים שונים לעבודת צוות");
-        }
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll(".cell").forEach((cell, i) => {
+          const rowIndex = Math.floor(i / 5);
+          const colIndex = i % 5;
+          createCheckboxCell(cell, rowIndex, colIndex);
+        });
 
-        for (const type of ['entry', 'parking', 'roof']) {
-          if (!codes[type].noCode && !codes[type].code) {
-            return alert(`נא להזין קוד עבור ${type === 'entry' ? 'כניסה' : type === 'parking' ? 'חניון' : 'גג'} או לסמן אין קוד`);
-          }
-          if (codes[type].noCode && !codes[type].option) {
-            return alert(`נא לבחור סיבה עבור אין קוד ב${type === 'entry' ? 'כניסה' : type === 'parking' ? 'חניון' : 'גג'}`);
-          }
-        }
+        resetAdminPanelCheckboxes();
 
-        const phoneText = phones.map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`).join('\n');
-        const noteText = `כתובת: ${address}\n${codeText}\n${phoneText}\nסיבה: ${reason}\nהערות: ${comments}`;
-        const teamColor = isTeamWork ? 'cyan' : null;
-
-        const rowIndex1 = names.indexOf(targetName1);
-        if (rowIndex1 === -1 || isNaN(parseInt(targetDay)) || isNaN(parseInt(targetNumber)) || parseInt(targetNumber) > 6) {
-          return alert("נתונים לא תקינים");
-        }
-
-        try {
-          await set(ref(db, `notes/${rowIndex1}/${targetDay}/${targetNumber}`), {
-            checked: false,
-            note: noteText.trim(),
-            teamColor: teamColor
+        document
+          .getElementById("admin-button")
+          .addEventListener("click", () => {
+            document.getElementById("admin-panel").style.display = "block";
           });
 
-          if (isTeamWork) {
-            const rowIndex2 = names.indexOf(targetName2);
-            if (rowIndex2 === -1) return alert("נתונים לא תקינים עבור האדם השני");
-            await set(ref(db, `notes/${rowIndex2}/${targetDay}/${targetNumber}`), {
-              checked: false,
-              note: noteText.trim(),
-              teamColor: teamColor
-            });
-          }
-          alert('משימה נשמרה בהצלחה');
-        } catch (error) {
-          console.error('Error saving task:', error);
-          alert('שגיאה בשמירת המשימה');
-        }
-      });
+        document
+          .getElementById("admin-confirm")
+          .addEventListener("click", () => {
+            const code = document.getElementById("admin-code").value;
+            if (code === "1111") {
+              isAdmin.status = true;
+              alert("הכניסה בוצעה בהצלחה!");
+              document.getElementById("admin-panel").style.display = "none";
+              document.getElementById("single-panel").style.display = "block";
+              document.getElementById("admin-button").style.display = "none";
+            } else {
+              alert("קוד שגוי!");
+            }
+          });
 
-      document.getElementById('clear-all').addEventListener('click', () => {
-        set(ref(db, 'notes'), null).then(() => location.reload()).catch(error => {
-          console.error('Error clearing tasks:', error);
-          alert('שגיאה בניקוי המשימות');
+        document.getElementById("admin-exit").addEventListener("click", () => {
+          isAdmin.status = false;
+          document.getElementById("single-panel").style.display = "none";
+          document.getElementById("admin-button").style.display = "block";
+          alert("יצאת ממצב ניהול");
         });
-      });
 
-      document.getElementById('save-to-archive').addEventListener('click', async () => {
-        try {
-          const snapshot = await get(ref(db, 'notes'));
-          const notesData = snapshot.val() || {};
-          const { weekNumber, dateRange } = getWeekDateRange();
-          
-          const archiveData = {};
-          names.forEach((name, rowIndex) => {
-            if (notesData[rowIndex]) {
-              archiveData[rowIndex] = {};
-              dayNames.forEach((_, colIndex) => {
-                if (notesData[rowIndex][colIndex]) {
-                  archiveData[rowIndex][colIndex] = {};
-                  taskNumbers.forEach(taskNum => {
-                    const taskData = notesData[rowIndex][colIndex][taskNum];
-                    if (taskData && taskData.note) {
-                      archiveData[rowIndex][colIndex][taskNum] = taskData;
+        document.getElementById("team-work").addEventListener("change", () => {
+          document.getElementById("target-name-2-container").style.display =
+            document.getElementById("team-work").checked ? "block" : "none";
+        });
+
+        setupPhoneEntries();
+        setupCodeInputs();
+
+        document
+          .getElementById("single-insert")
+          .addEventListener("click", async () => {
+            const isTeamWork = document.getElementById("team-work").checked;
+            const targetName1 = document.getElementById("target-name").value;
+            const targetName2 = isTeamWork
+              ? document.getElementById("target-name-2").value
+              : null;
+            const targetDay = document.getElementById("target-day").value;
+            const targetNumber = document.getElementById("target-number").value;
+            const address = document
+              .getElementById("task-address")
+              .value.trim();
+            const reason = document.getElementById("task-reason").value.trim();
+            const comments = document
+              .getElementById("task-comments")
+              .value.trim();
+
+            const phoneEntries = document.querySelectorAll(".phone-entry");
+            const phones = [];
+            for (let i = 0; i < phoneEntries.length; i++) {
+              const phone = phoneEntries[i]
+                .querySelector(".phone-number")
+                .value.trim();
+              const name = phoneEntries[i]
+                .querySelector(".phone-name")
+                .value.trim();
+              if (!phone || !name)
+                return alert("נא למלא את כל שדות הטלפון והשמות");
+              phones.push({ phone, name });
+            }
+
+            const codes = {
+              entry: {
+                noCode: document.getElementById("no-code-entry").checked,
+                code: document.getElementById("code-entry").value.trim(),
+                option: document.getElementById("code-entry-option").value,
+              },
+              parking: {
+                noCode: document.getElementById("no-code-parking").checked,
+                code: document.getElementById("code-parking").value.trim(),
+                option: document.getElementById("code-parking-option").value,
+              },
+              roof: {
+                noCode: document.getElementById("no-code-roof").checked,
+                code: document.getElementById("code-roof").value.trim(),
+                option: document.getElementById("code-roof-option").value,
+              },
+            };
+
+            const codeText = [
+              `קוד כניסה: ${
+                codes.entry.noCode
+                  ? codes.entry.option || "לא צוין"
+                  : codes.entry.code || "לא צוין"
+              }`,
+              `קוד חניון: ${
+                codes.parking.noCode
+                  ? codes.parking.option || "לא צוין"
+                  : codes.parking.code || "לא צוין"
+              }`,
+              `קוד גג: ${
+                codes.roof.noCode
+                  ? codes.roof.option || "לא צוין"
+                  : codes.roof.code || "לא צוין"
+              }`,
+            ].join("\n");
+
+            if (
+              !targetName1 ||
+              !targetDay ||
+              !targetNumber ||
+              !address ||
+              !reason ||
+              !comments
+            ) {
+              return alert("נא למלא את כל השדות");
+            }
+
+            if (isTeamWork && (!targetName2 || targetName1 === targetName2)) {
+              return alert("נא לבחור שני אנשים שונים לעבודת צוות");
+            }
+
+            for (const type of ["entry", "parking", "roof"]) {
+              if (!codes[type].noCode && !codes[type].code) {
+                return alert(
+                  `נא להזין קוד עבור ${
+                    type === "entry"
+                      ? "כניסה"
+                      : type === "parking"
+                      ? "חניון"
+                      : "גג"
+                  } או לסמן אין קוד`
+                );
+              }
+              if (codes[type].noCode && !codes[type].option) {
+                return alert(
+                  `נא לבחור סיבה עבור אין קוד ב${
+                    type === "entry"
+                      ? "כניסה"
+                      : type === "parking"
+                      ? "חניון"
+                      : "גג"
+                  }`
+                );
+              }
+            }
+
+            const phoneText = phones
+              .map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`)
+              .join("\n");
+            const noteText = `כתובת: ${address}\n${codeText}\n${phoneText}\nסיבה: ${reason}\nהערות: ${comments}`;
+            const teamColor = isTeamWork ? "cyan" : null;
+
+            const rowIndex1 = names.indexOf(targetName1);
+            if (
+              rowIndex1 === -1 ||
+              isNaN(parseInt(targetDay)) ||
+              isNaN(parseInt(targetNumber)) ||
+              parseInt(targetNumber) > 7 // allow 7
+            ) {
+              return alert("נתונים לא תקינים");
+            }
+            try {
+              await set(
+                ref(db, `notes/${rowIndex1}/${targetDay}/${targetNumber}`),
+                {
+                  checked: false,
+                  note: noteText.trim(),
+                  teamColor: teamColor,
+                }
+              );
+
+              if (isTeamWork) {
+                const rowIndex2 = names.indexOf(targetName2);
+                if (rowIndex2 === -1)
+                  return alert("נתונים לא תקינים עבור האדם השני");
+                await set(
+                  ref(db, `notes/${rowIndex2}/${targetDay}/${targetNumber}`),
+                  {
+                    checked: false,
+                    note: noteText.trim(),
+                    teamColor: teamColor,
+                  }
+                );
+              }
+              alert("משימה נשמרה בהצלחה");
+            } catch (error) {
+              console.error("Error saving task:", error);
+              alert("שגיאה בשמירת המשימה");
+            }
+          });
+
+        document.getElementById("clear-all").addEventListener("click", () => {
+          set(ref(db, "notes"), null)
+            .then(() => location.reload())
+            .catch((error) => {
+              console.error("Error clearing tasks:", error);
+              alert("שגיאה בניקוי המשימות");
+            });
+        });
+
+        document
+          .getElementById("save-to-archive")
+          .addEventListener("click", async () => {
+            try {
+              const snapshot = await get(ref(db, "notes"));
+              const notesData = snapshot.val() || {};
+              const { weekNumber, dateRange } = getWeekDateRange();
+
+              const archiveData = {};
+              names.forEach((name, rowIndex) => {
+                if (notesData[rowIndex]) {
+                  archiveData[rowIndex] = {};
+                  dayNames.forEach((_, colIndex) => {
+                    if (notesData[rowIndex][colIndex]) {
+                      archiveData[rowIndex][colIndex] = {};
+                      taskNumbers.forEach((taskNum) => {
+                        const taskData = notesData[rowIndex][colIndex][taskNum];
+                        if (taskData && taskData.note) {
+                          archiveData[rowIndex][colIndex][taskNum] = taskData;
+                        }
+                      });
                     }
                   });
                 }
               });
+
+              if (Object.keys(archiveData).length === 0) {
+                alert("אין משימות לשמירה בארכיון");
+                return;
+              }
+
+              await set(
+                ref(db, `archive/week_${weekNumber}/${dateRange}`),
+                archiveData
+              );
+              alert(`המשימות נשמרו בארכיון ${dateRange} בהצלחה`);
+            } catch (error) {
+              console.error("Error saving to archive:", error);
+              alert("שגיאה בשמירת הארכיון");
             }
           });
 
-          if (Object.keys(archiveData).length === 0) {
-            alert('אין משימות לשמירה בארכיון');
-            return;
+        const today = new Date().getDay();
+        const now = new Date();
+        const sunday = new Date(now);
+        if (today === 5 || today === 6) {
+          sunday.setDate(now.getDate() - now.getDay() + 7);
+        } else {
+          sunday.setDate(now.getDate() - now.getDay());
+        }
+        for (let i = 0; i < 5; i++) {
+          const date = new Date(sunday);
+          date.setDate(sunday.getDate() + i);
+          const dd = String(date.getDate()).padStart(2, "0");
+          const mm = String(date.getMonth() + 1).padStart(2, "0");
+          const th = document.getElementById(`day-${i}`);
+          th.innerText = `${dayNames[i]} ${dd}.${mm}`;
+          if (i === today && today <= 4 && today !== 5 && today !== 6) {
+            th.classList.add("today");
           }
-
-          await set(ref(db, `archive/week_${weekNumber}/${dateRange}`), archiveData);
-          alert(`המשימות נשמרו בארכיון ${dateRange} בהצלחה`);
-        } catch (error) {
-          console.error('Error saving to archive:', error);
-          alert('שגיאה בשמירת הארכיון');
         }
-      });
 
-      const today = new Date().getDay();
-      const now = new Date();
-      const sunday = new Date(now);
-      if (today === 5 || today === 6) {
-        sunday.setDate(now.getDate() - now.getDay() + 7);
-      } else {
-        sunday.setDate(now.getDate() - now.getDay());
-      }
-      for (let i = 0; i < 5; i++) {
-        const date = new Date(sunday);
-        date.setDate(sunday.getDate() + i);
-        const dd = String(date.getDate()).padStart(2, '0');
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const th = document.getElementById(`day-${i}`);
-        th.innerText = `${dayNames[i]} ${dd}.${mm}`;
-        if (i === today && today <= 4 && today !== 5 && today !== 6) {
-          th.classList.add('today');
+        const daySelect = document.getElementById("day-select");
+        if (today >= 0 && today <= 4 && today !== 5 && today !== 6) {
+          daySelect.value = today;
+        } else {
+          daySelect.value = 0;
         }
-      }
 
-      const daySelect = document.getElementById('day-select');
-      if (today >= 0 && today <= 4 && today !== 5 && today !== 6) {
-        daySelect.value = today;
-      } else {
-        daySelect.value = 0;
-      }
-
-      daySelect.addEventListener('change', updateTableDisplay);
-      window.addEventListener('resize', () => {
+        daySelect.addEventListener("change", updateTableDisplay);
+        window.addEventListener("resize", () => {
+          updateTableDisplay();
+        });
         updateTableDisplay();
-      });
-      updateTableDisplay();
 
-      document.getElementById('task-overlay').addEventListener('click', (e) => {
-        if (e.target === document.getElementById('task-overlay')) {
-          document.getElementById('task-overlay').style.display = 'none';
+        document
+          .getElementById("task-overlay")
+          .addEventListener("click", (e) => {
+            if (e.target === document.getElementById("task-overlay")) {
+              document.getElementById("task-overlay").style.display = "none";
+            }
+          });
+
+        if (window.matchMedia("(max-width: 600px)").matches) {
+          history.pushState({ page: "main" }, null, location.href);
+          window.addEventListener("popstate", (event) => {
+            if (event.state?.page === "main") {
+              document.getElementById("back-confirm-overlay").style.display =
+                "flex";
+              history.pushState({ page: "confirm" }, null, location.href);
+            } else if (event.state?.page === "confirm") {
+              document.getElementById("back-confirm-overlay").style.display =
+                "none";
+              window.history.go(-2);
+            }
+          });
+
+          document
+            .getElementById("back-cancel")
+            .addEventListener("click", () => {
+              document.getElementById("back-confirm-overlay").style.display =
+                "none";
+              history.pushState({ page: "main" }, null, location.href);
+            });
         }
       });
-
-      if (window.matchMedia("(max-width: 600px)").matches) {
-        history.pushState({ page: 'main' }, null, location.href);
-        window.addEventListener('popstate', (event) => {
-          if (event.state?.page === 'main') {
-            document.getElementById('back-confirm-overlay').style.display = 'flex';
-            history.pushState({ page: 'confirm' }, null, location.href);
-          } else if (event.state?.page === 'confirm') {
-            document.getElementById('back-confirm-overlay').style.display = 'none';
-            window.history.go(-2);
-          }
-        });
-
-        document.getElementById('back-cancel').addEventListener('click', () => {
-          document.getElementById('back-confirm-overlay').style.display = 'none';
-          history.pushState({ page: 'main' }, null, location.href);
-        });
+    </script>
+    <script>
+      function toggleFaq() {
+        const popup = document.getElementById("faqPopup");
+        popup.style.display =
+          popup.style.display === "block" ? "none" : "block";
       }
-    });
-  </script>
-  <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-      background: #ffffff;
-      margin: 0;
-      position: relative;
-    }
-    .header-image {
-      width: 100%;
-      max-width: 300px;
-      height: auto;
-      object-fit: contain;
-      display: block;
-      margin: 10px auto;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      max-width: 100%;
-      margin: 10px 0;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: center;
-      vertical-align: top;
-      position: relative;
-    }
-    th {
-      background: #83a737;
-      color: white;
-    }
-    .today {
-      background: #965fa9 !important;
-      color: rgb(255, 255, 255);
-    }
-    th.name {
-      background: #fc9247;
-    }
-    .checkboxes label {
-      display: inline-block;
-      margin: 0 2px;
-      position: relative;
-      font-weight: bold;
-      padding: 2px;
-      border: none;
-    }
-    .no-task {
-      color: black;
-    }
-    .has-task {
-      color: #FF0000;
-    }
-    .completed {
-      color: #008000;
-    }
-    .team_cyan { color: #00CED1; border: 1px solid #00CED1; border-radius: 3px; }
-    .tooltip {
-      display: none;
-      position: absolute;
-      bottom: 100%;
-      right: 0;
-      background: #fff;
-      border: 1px solid #ccc;
-      padding: 8px;
-      z-index: 10;
-      max-width: 200px;
-      white-space: pre-line;
-      font-size: 0.9em;
-    }
-    label:hover .tooltip {
-      display: block;
-    }
-    #day-select {
-      display: block;
-      margin: 10px auto;
-      padding: 5px;
-      font-size: 1em;
-      width: 200px;
-    }
-    #admin-button {
-      display: block;
-      margin: 10px auto;
-      padding: 8px 12px;
-      font-size: 0.9em;
-      background: #83a737;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    #admin-panel, #single-panel {
-      display: none;
-      position: relative;
-      background: white;
-      border: 1px solid #ccc;
-      padding: 15px;
-      width: 100%;
-      max-width: 100%;
-      margin: 10px 0;
-      box-sizing: border-box;
-      z-index: 100;
-    }
-    textarea, input, select {
-      width: 100%;
-      margin-bottom: 8px;
-      padding: 5px;
-      font-size: 0.9em;
-    }
-    button {
-      padding: 8px;
-      font-size: 0.9em;
-      width: 100%;
-      margin-bottom: 5px;
-    }
-    .required {
-      color: red;
-    }
-    #phone-list {
-      margin-bottom: 5px;
-    }
-    .phone-entry {
-      display: flex;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    .phone-number {
-      width: 65%;
-      margin-left: 5px;
-    }
-    .phone-name {
-      width: 35%;
-    }
-    #add-phone {
-      display: block;
-      padding: 5px;
-      font-size: 1em;
-      width: auto;
-      background: #83a737;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      margin: 5px 0;
-    }
-    .remove-phone {
-      padding: 5px;
-      font-size: 1em;
-      width: auto;
-      background: #ff4444;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      margin-right: 5px;
-    }
-    #task-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.8);
-      z-index: 200;
-      justify-content: center;
-      align-items: center;
-    }
-    #task-overlay-content {
-      background: #fff;
-      padding: 20px;
-      max-width: 90%;
-      max-height: 80%;
-      overflow-y: auto;
-      font-size: 1.5em;
-      text-align: right;
-      border-radius: 8px;
-      white-space: pre-line;
-      line-height: 2;
-    }
-    #task-overlay-content p {
-      margin: 0 0 15px 0;
-      direction: rtl;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-    }
-    .call-phone {
-      display: none;
-      width: auto;
-      height: auto;
-      padding: 0;
-      font-size: 1em;
-      background: none;
-      border: none;
-      cursor: pointer;
-      margin-right: 5px;
-      line-height: 1;
-      text-align: center;
-      text-decoration: none;
-      color: black;
-    }
-    #back-confirm-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.8);
-      z-index: 300;
-      justify-content: center;
-      align-items: center;
-    }
-    #back-confirm-content {
-      background: #fff;
-      padding: 20px;
-      max-width: 90%;
-      text-align: center;
-      border-radius: 8px;
-      font-size: 1.2em;
-    }
-    #back-cancel {
-      margin-top: 10px;
-      padding: 8px 16px;
-      font-size: 1em;
-      background: #83a737;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    #codes-section {
-      margin-bottom: 8px;
-    }
-    #codes-section label {
-      display: block;
-      margin-bottom: 2px;
-    }
-    .code-row {
-      display: flex;
-      align-items: center;
-      margin-bottom: 2px;
-    }
-    .code-row input[type="text"] {
-      width: 60%;
-      padding: 3px;
-      font-size: 0.9em;
-      margin-left: 5px;
-    }
-    .checkbox-container {
-      width: 40%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 0;
-      text-align: center;
-    }
-    .checkbox-container input[type="checkbox"] {
-      margin: 0;
-    }
-    .checkbox-container label {
-      font-size: 0.9em;
-      margin-top: 1px;
-      line-height: 1;
-    }
-    .code-options {
-      display: none;
-      margin-top: -27px;
-      margin-bottom: 2px;
-      padding-right: 40%;
-    }
-    .code-options select {
-      width: 60%;
-      font-size: 0.8em;
-      padding: 3px;
-      margin-left: 5px;
-    }
-    .team-work-row {
-      display: flex;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    .team-work-row select {
-      width: 60%;
-      padding: 5px;
-      font-size: 0.9em;
-      margin-left: 5px;
-    }
-    #target-name-2-container {
-      display: none;
-      margin-bottom: 8px;
-    }
 
-    @media (max-width: 600px) {
-      body { padding: 10px; }
-      .header-image { max-width: 150px; margin: 5px auto; }
-      table { font-size: 0.85em; }
-      th, td { padding: 5px; }
-      .checkboxes label { margin: 0 1px; }
-      .tooltip { max-width: 150px; font-size: 0.8em; }
-      #day-select { width: 150px; font-size: 0.9em; }
-      #admin-button, #admin-panel { display: none; }
-      #single-panel { padding: 10px; }
-      .call-phone { display: inline-block; }
-      .phone-number { width: 60%; }
-      .phone-name { width: 40%; }
-      .code-row input[type="text"] { width: 55%; }
-      .checkbox-container { width: 45%; }
-      .checkbox-container label { font-size: 0.85em; }
-      .code-options select { width: 55%; }
-      .team-work-row select { width: 55%; }
-    }
+      function toggleAnswer(element) {
+        const answer = element.querySelector(".faq-answer");
+        answer.style.display =
+          answer.style.display === "block" ? "none" : "block";
+      }
+    </script>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+        background: #ffffff;
+        margin: 0;
+        position: relative;
+      }
+      .header-image {
+        width: 100%;
+        max-width: 300px;
+        height: auto;
+        object-fit: contain;
+        display: block;
+        margin: 10px auto;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        max-width: 100%;
+        margin: 10px 0;
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: center;
+        vertical-align: top;
+        position: relative;
+      }
+      th {
+        background: #83a737;
+        color: white;
+      }
+      .today {
+        background: #965fa9 !important;
+        color: rgb(255, 255, 255);
+      }
+      th.name {
+        background: #fc9247;
+      }
+      .checkboxes label {
+        display: inline-block;
+        margin: 0 2px;
+        position: relative;
+        font-weight: bold;
+        padding: 2px;
+        border: none;
+        min-width: 22px;
+        text-align: center;
+      }
+      .no-task {
+        color: black;
+      }
+      .has-task {
+        color: #ff0000;
+      }
+      .completed {
+        color: #008000;
+      }
+      .team_cyan {
+        color: #00ced1;
+        border: 1px solid #00ced1;
+        border-radius: 3px;
+      }
+      .tooltip {
+        display: none;
+        position: absolute;
+        bottom: 100%;
+        right: 0;
+        background: #fff;
+        border: 1px solid #ccc;
+        padding: 8px;
+        z-index: 10;
+        max-width: 200px;
+        white-space: pre-line;
+        font-size: 0.9em;
+      }
+      label:hover .tooltip {
+        display: block;
+      }
+      #day-select {
+        display: block;
+        margin: 10px auto;
+        padding: 5px;
+        font-size: 1em;
+        width: 200px;
+      }
+      #admin-button {
+        display: block;
+        margin: 10px auto;
+        padding: 8px 12px;
+        font-size: 0.9em;
+        background: #83a737;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #admin-panel,
+      #single-panel {
+        display: none;
+        position: relative;
+        background: white;
+        border: 1px solid #ccc;
+        padding: 15px;
+        width: 100%;
+        max-width: 100%;
+        margin: 10px 0;
+        box-sizing: border-box;
+        z-index: 100;
+      }
+      textarea,
+      input,
+      select {
+        width: 100%;
+        margin-bottom: 8px;
+        padding: 5px;
+        font-size: 0.9em;
+      }
+      button {
+        padding: 8px;
+        font-size: 0.9em;
+        width: 100%;
+        margin-bottom: 5px;
+      }
+      .required {
+        color: red;
+      }
+      #phone-list {
+        margin-bottom: 5px;
+      }
+      .phone-entry {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .phone-number {
+        width: 65%;
+        margin-left: 5px;
+      }
+      .phone-name {
+        width: 35%;
+      }
+      #add-phone {
+        display: block;
+        padding: 5px;
+        font-size: 1em;
+        width: auto;
+        background: #83a737;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        margin: 5px 0;
+      }
+      .remove-phone {
+        padding: 5px;
+        font-size: 1em;
+        width: auto;
+        background: #ff4444;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        margin-right: 5px;
+      }
+      #task-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 200;
+        justify-content: center;
+        align-items: center;
+      }
+      #task-overlay-content {
+        background: #fff;
+        padding: 20px;
+        max-width: 90%;
+        max-height: 80%;
+        overflow-y: auto;
+        font-size: 1.5em;
+        text-align: right;
+        border-radius: 8px;
+        white-space: pre-line;
+        line-height: 2;
+      }
+      #task-overlay-content p {
+        margin: 0 0 15px 0;
+        direction: rtl;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+      }
+      .call-phone {
+        display: none;
+        width: auto;
+        height: auto;
+        padding: 0;
+        font-size: 1em;
+        background: none;
+        border: none;
+        cursor: pointer;
+        margin-right: 5px;
+        line-height: 1;
+        text-align: center;
+        text-decoration: none;
+        color: black;
+      }
+      #back-confirm-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 300;
+        justify-content: center;
+        align-items: center;
+      }
+      #back-confirm-content {
+        background: #fff;
+        padding: 20px;
+        max-width: 90%;
+        text-align: center;
+        border-radius: 8px;
+        font-size: 1.2em;
+      }
+      #back-cancel {
+        margin-top: 10px;
+        padding: 8px 16px;
+        font-size: 1em;
+        background: #83a737;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #codes-section {
+        margin-bottom: 8px;
+      }
+      #codes-section label {
+        display: block;
+        margin-bottom: 2px;
+      }
+      .code-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 2px;
+      }
+      .code-row input[type="text"] {
+        width: 60%;
+        padding: 3px;
+        font-size: 0.9em;
+        margin-left: 5px;
+      }
+      .checkbox-container {
+        width: 40%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 0;
+        text-align: center;
+      }
+      .checkbox-container input[type="checkbox"] {
+        margin: 0;
+      }
+      .checkbox-container label {
+        font-size: 0.9em;
+        margin-top: 1px;
+        line-height: 1;
+      }
+      .code-options {
+        display: none;
+        margin-top: -27px;
+        margin-bottom: 2px;
+        padding-right: 40%;
+      }
+      .code-options select {
+        width: 60%;
+        font-size: 0.8em;
+        padding: 3px;
+        margin-left: 5px;
+      }
+      .team-work-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .team-work-row select {
+        width: 60%;
+        padding: 5px;
+        font-size: 0.9em;
+        margin-left: 5px;
+      }
+      #target-name-2-container {
+        display: none;
+        margin-bottom: 8px;
+      }
 
-    @media (min-width: 601px) {
-      #day-select { display: none; }
-      .checkboxes input[type="checkbox"]:disabled { opacity: 1; cursor: default; }
-    }
-    .faq-button {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    background-color: #83a737;
-    color: white;
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
-    font-weight: bold;
-    font-size: 20px;
-    cursor: pointer;
-    text-align: center;
-    line-height: 36px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-    z-index: 9999;
-    transition: background-color 0.3s ease;
-  }
+      @media (max-width: 600px) {
+        body {
+          padding: 10px;
+        }
+        .header-image {
+          max-width: 150px;
+          margin: 5px auto;
+        }
+        table {
+          font-size: 0.85em;
+        }
+        th,
+        td {
+          padding: 5px;
+        }
+        .checkboxes label {
+          margin: 0 1px;
+        }
+        .tooltip {
+          max-width: 150px;
+          font-size: 0.8em;
+        }
+        #day-select {
+          width: 150px;
+          font-size: 0.9em;
+        }
+        #admin-button,
+        #admin-panel {
+          display: none;
+        }
+        #single-panel {
+          padding: 10px;
+        }
+        .call-phone {
+          display: inline-block;
+        }
+        .phone-number {
+          width: 60%;
+        }
+        .phone-name {
+          width: 40%;
+        }
+        .code-row input[type="text"] {
+          width: 55%;
+        }
+        .checkbox-container {
+          width: 45%;
+        }
+        .checkbox-container label {
+          font-size: 0.85em;
+        }
+        .code-options select {
+          width: 55%;
+        }
+        .team-work-row select {
+          width: 55%;
+        }
+      }
 
-  .faq-button:hover {
-    background-color: #83a737;
-  }
+      @media (min-width: 601px) {
+        #day-select {
+          display: none;
+        }
+        .checkboxes input[type="checkbox"]:disabled {
+          opacity: 1;
+          cursor: default;
+        }
+      }
+      .faq-button {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background-color: #83a737;
+        color: white;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        font-weight: bold;
+        font-size: 20px;
+        cursor: pointer;
+        text-align: center;
+        line-height: 36px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        z-index: 9999;
+        transition: background-color 0.3s ease;
+      }
 
-  .faq-popup {
-    position: fixed;
-    bottom: 70px;
-    left: 20px;
-    width: 320px;
-    max-height: 400px;
-    overflow-y: auto;
-    background-color: #ffffff;
-    border: 2px solid #83a737;
-    border-radius: 12px;
-    padding: 16px;
-    font-family: sans-serif;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    display: none;
-    direction: rtl;
-    z-index: 9999;
-    animation: fadeIn 0.3s ease;
-  }
+      .faq-button:hover {
+        background-color: #83a737;
+      }
 
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .faq-item {
-    margin-bottom: 12px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    border-radius: 8px;
-    padding: 6px;
-  }
+      .faq-popup {
+        position: fixed;
+        bottom: 70px;
+        left: 20px;
+        width: 320px;
+        max-height: 400px;
+        overflow-y: auto;
+        background-color: #ffffff;
+        border: 2px solid #83a737;
+        border-radius: 12px;
+        padding: 16px;
+        font-family: sans-serif;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        display: none;
+        direction: rtl;
+        z-index: 9999;
+        animation: fadeIn 0.3s ease;
+      }
 
-  .faq-item:hover {
-    background-color: #f1f1f1;
-  }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .faq-item {
+        margin-bottom: 12px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        border-radius: 8px;
+        padding: 6px;
+      }
 
-  .faq-question {
-    font-weight: bold;
-    color: #333;
-  }
+      .faq-item:hover {
+        background-color: #f1f1f1;
+      }
 
-  .faq-answer {
-    display: none;
-    margin-top: 6px;
-    color: #555;
-    font-size: 14px;
-  }
-</style>
-</head>
-<body>
-  <img src="utech.jpg" alt="Utech Logo" class="header-image">
-  <select id="day-select">
-    <option value="0">ראשון</option>
-    <option value="1">שני</option>
-    <option value="2">שלישי</option>
-    <option value="3">רביעי</option>
-    <option value="4">חמישי</option>
-  </select>
-  <table id="schedule-table">
-    <thead>
-      <tr>
-        <th class="name">שם</th>
-        <th id="day-0">ראשון</th>
-        <th id="day-1">שני</th>
-        <th id="day-2">שלישי</th>
-        <th id="day-3">רביעי</th>
-        <th id="day-4">חמישי</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td>טימור</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
-      <tr><td>יעקב</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
-      <tr><td>אלי</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
-    </tbody>
-  </table>
+      .faq-question {
+        font-weight: bold;
+        color: #333;
+      }
 
-  <button id="admin-button">🔒 כניסת מנהל</button>
-  <div id="admin-panel">
-    <label>קוד גישה: <input type="password" id="admin-code"></label>
-    <button id="admin-confirm">אישור</button>
-  </div>
-  <div id="single-panel">
-    <label>שם:<span class="required">*</span>
-      <div class="team-work-row">
-        <select id="target-name" required>
-          <option value="">בחר שם</option>
-          <option>טימור</option>
-          <option>יעקב</option>
-          <option>אלי</option>
-        </select>
-        <div class="checkbox-container">
-          <input type="checkbox" id="team-work">
-          <label for="team-work">עבודת צוות</label>
-        </div>
-      </div>
-    </label>
-    <div id="target-name-2-container">
-      <label>שם שני:<span class="required">*</span>
+      .faq-answer {
+        display: none;
+        margin-top: 6px;
+        color: #555;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <img src="utech.jpg" alt="Utech Logo" class="header-image" />
+    <select id="day-select">
+      <option value="0">ראשון</option>
+      <option value="1">שני</option>
+      <option value="2">שלישי</option>
+      <option value="3">רביעי</option>
+      <option value="4">חמישי</option>
+    </select>
+    <table id="schedule-table">
+      <thead>
+        <tr>
+          <th class="name">שם</th>
+          <th id="day-0">ראשון</th>
+          <th id="day-1">שני</th>
+          <th id="day-2">שלישי</th>
+          <th id="day-3">רביעי</th>
+          <th id="day-4">חמישי</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>טימור</td>
+          <td class="cell"></td>
+          <td class="cell"></td>
+          <td class="cell"></td>
+          <td class="cell"></td>
+          <td class="cell"></td>
+        </tr>
+        <tr>
+          <td>יעקב</td>
+          <td class="cell"></td>
+          <td class="cell"></td>
+          <td class="cell"></td>
+          <td class="cell"></td>
+          <td class="cell"></td>
+        </tr>
+        <tr>
+          <td>אלי</td>
+          <td class="cell"></td>
+          <td class="cell"></td>
+          <td class="cell"></td>
+          <td class="cell"></td>
+          <td class="cell"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <button id="admin-button">🔒 כניסת מנהל</button>
+    <div id="admin-panel">
+      <label>קוד גישה: <input type="password" id="admin-code" /></label>
+      <button id="admin-confirm">אישור</button>
+    </div>
+    <div id="single-panel">
+      <label
+        >שם:<span class="required">*</span>
         <div class="team-work-row">
-          <select id="target-name-2" required>
+          <select id="target-name" required>
             <option value="">בחר שם</option>
             <option>טימור</option>
             <option>יעקב</option>
             <option>אלי</option>
           </select>
+          <div class="checkbox-container">
+            <input type="checkbox" id="team-work" />
+            <label for="team-work">עבודת צוות</label>
+          </div>
         </div>
       </label>
+      <div id="target-name-2-container">
+        <label
+          >שם שני:<span class="required">*</span>
+          <div class="team-work-row">
+            <select id="target-name-2" required>
+              <option value="">בחר שם</option>
+              <option>טימור</option>
+              <option>יעקב</option>
+              <option>אלי</option>
+            </select>
+          </div>
+        </label>
+      </div>
+      <label
+        >יום:<span class="required">*</span>
+        <select id="target-day" required>
+          <option value="">בחר יום</option>
+          <option value="0">ראשון</option>
+          <option value="1">שני</option>
+          <option value="2">שלישי</option>
+          <option value="3">רביעי</option>
+          <option value="4">חמישי</option>
+        </select>
+      </label>
+      <label
+        >מספר משימה:<span class="required">*</span>
+        <select id="target-number" required>
+          <option value="">בחר מספר</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+        </select>
+      </label>
+      <label
+        >כתובת:<span class="required">*</span>
+        <input type="text" id="task-address" required placeholder="הזן כתובת" />
+      </label>
+      <div id="codes-section">
+        <label>קודים:<span class="required">*</span></label>
+        <label
+          >כניסה:
+          <div class="code-row">
+            <input type="text" id="code-entry" placeholder="הזן קוד כניסה" />
+            <div class="checkbox-container">
+              <input type="checkbox" id="no-code-entry" />
+              <label for="no-code-entry">אין קוד</label>
+            </div>
+          </div>
+          <div class="code-options" id="code-entry-options">
+            <select id="code-entry-option" class="code-option-select">
+              <option value="">בחר אפשרות</option>
+              <option value="יש שומר">יש שומר</option>
+              <option value="אין קודן / דלת פתוחה">אין קודן / דלת פתוחה</option>
+            </select>
+          </div>
+        </label>
+        <label
+          >חניון:
+          <div class="code-row">
+            <input type="text" id="code-parking" placeholder="הזן קוד חניון" />
+            <div class="checkbox-container">
+              <input type="checkbox" id="no-code-parking" />
+              <label for="no-code-parking">אין קוד</label>
+            </div>
+          </div>
+          <div class="code-options" id="code-parking-options">
+            <select id="code-parking-option" class="code-option-select">
+              <option value="">בחר אפשרות</option>
+              <option value="יש שומר">יש שומר</option>
+              <option value="אין קודן / דלת פתוחה">אין קודן / דלת פתוחה</option>
+            </select>
+          </div>
+        </label>
+        <label
+          >גג:
+          <div class="code-row">
+            <input type="text" id="code-roof" placeholder="הזן קוד גג" />
+            <div class="checkbox-container">
+              <input type="checkbox" id="no-code-roof" />
+              <label for="no-code-roof">אין קוד</label>
+            </div>
+          </div>
+          <div class="code-options" id="code-roof-options">
+            <select id="code-roof-option" class="code-option-select">
+              <option value="">בחר אפשרות</option>
+              <option value="יש שומר">יש שומר</option>
+              <option value="אין קודן / דלת פתוחה">אין קודן / דלת פתוחה</option>
+            </select>
+          </div>
+        </label>
+      </div>
+      <label>טלפון:<span class="required">*</span></label>
+      <div id="phone-list">
+        <div class="phone-entry">
+          <input
+            type="tel"
+            class="phone-number"
+            placeholder="הזן מספר טלפון"
+            required
+          />
+          <input
+            type="text"
+            class="phone-name"
+            placeholder="שם איש קשר"
+            required
+          />
+        </div>
+      </div>
+      <button id="add-phone">+</button>
+      <label
+        >סיבה:<span class="required">*</span>
+        <textarea
+          id="task-reason"
+          required
+          placeholder="הזן סיבה"
+          rows="3"
+        ></textarea>
+      </label>
+      <label
+        >הערות:<span class="required">*</span>
+        <textarea
+          id="task-comments"
+          required
+          placeholder="הזן הערות"
+        ></textarea>
+      </label>
+      <button id="single-insert">💾 שמור משימה</button>
+      <button id="clear-all">🗑️ נקה הכל</button>
+      <button id="save-to-archive">📥 שמור בארכיון</button>
+      <button id="admin-exit">יציאה ממצב מנהל</button>
     </div>
-    <label>יום:<span class="required">*</span>
-      <select id="target-day" required>
-        <option value="">בחר יום</option>
-        <option value="0">ראשון</option>
-        <option value="1">שני</option>
-        <option value="2">שלישי</option>
-        <option value="3">רביעי</option>
-        <option value="4">חמישי</option>
-      </select>
-    </label>
-    <label>מספר משימה:<span class="required">*</span>
-      <select id="target-number" required>
-        <option value="">בחר מספר</option>
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-        <option value="6">6</option>
-      </select>
-    </label>
-    <label>כתובת:<span class="required">*</span>
-      <input type="text" id="task-address" required placeholder="הזן כתובת">
-    </label>
-    <div id="codes-section">
-      <label>קודים:<span class="required">*</span></label>
-      <label>כניסה:
-        <div class="code-row">
-          <input type="text" id="code-entry" placeholder="הזן קוד כניסה">
-          <div class="checkbox-container">
-            <input type="checkbox" id="no-code-entry">
-            <label for="no-code-entry">אין קוד</label>
-          </div>
-        </div>
-        <div class="code-options" id="code-entry-options">
-          <select id="code-entry-option" class="code-option-select">
-            <option value="">בחר אפשרות</option>
-            <option value="יש שומר">יש שומר</option>
-            <option value="אין קודן / דלת פתוחה">אין קודן / דלת פתוחה</option>
-          </select>
-        </div>
-      </label>
-      <label>חניון:
-        <div class="code-row">
-          <input type="text" id="code-parking" placeholder="הזן קוד חניון">
-          <div class="checkbox-container">
-            <input type="checkbox" id="no-code-parking">
-            <label for="no-code-parking">אין קוד</label>
-          </div>
-        </div>
-        <div class="code-options" id="code-parking-options">
-          <select id="code-parking-option" class="code-option-select">
-            <option value="">בחר אפשרות</option>
-            <option value="יש שומר">יש שומר</option>
-            <option value="אין קודן / דלת פתוחה">אין קודן / דלת פתוחה</option>
-          </select>
-        </div>
-      </label>
-      <label>גג:
-        <div class="code-row">
-          <input type="text" id="code-roof" placeholder="הזן קוד גג">
-          <div class="checkbox-container">
-            <input type="checkbox" id="no-code-roof">
-            <label for="no-code-roof">אין קוד</label>
-          </div>
-        </div>
-        <div class="code-options" id="code-roof-options">
-          <select id="code-roof-option" class="code-option-select">
-            <option value="">בחר אפשרות</option>
-            <option value="יש שומר">יש שומר</option>
-            <option value="אין קודן / דלת פתוחה">אין קודן / דלת פתוחה</option>
-          </select>
-        </div>
-      </label>
+
+    <div id="task-overlay">
+      <div id="task-overlay-content"></div>
     </div>
-    <label>טלפון:<span class="required">*</span></label>
-    <div id="phone-list">
-      <div class="phone-entry">
-        <input type="tel" class="phone-number" placeholder="הזן מספר טלפון" required>
-        <input type="text" class="phone-name" placeholder="שם איש קשר" required>
+
+    <div id="back-confirm-overlay">
+      <div id="back-confirm-content">
+        <p>לחץ שוב על "חזור" כדי לצאת</p>
+        <button id="back-cancel">ביטול</button>
       </div>
     </div>
-    <button id="add-phone">+</button>
-    <label>סיבה:<span class="required">*</span>
-      <textarea id="task-reason" required placeholder="הזן סיבה" rows="3"></textarea>
-    </label>
-    <label>הערות:<span class="required">*</span>
-      <textarea id="task-comments" required placeholder="הזן הערות"></textarea>
-    </label>
-    <button id="single-insert">💾 שמור משימה</button>
-    <button id="clear-all">🗑️ נקה הכל</button>
-    <button id="save-to-archive">📥 שמור בארכיון</button>
-    <button id="admin-exit">יציאה ממצב מנהל</button>
-  </div>
+    <div class="faq-button" onclick="toggleFaq()">i</div>
 
-  <div id="task-overlay">
-    <div id="task-overlay-content"></div>
-  </div>
-
-  <div id="back-confirm-overlay">
-    <div id="back-confirm-content">
-      <p>לחץ שוב על "חזור" כדי לצאת</p>
-      <button id="back-cancel">ביטול</button>
+    <div class="faq-popup" id="faqPopup">
+      <div class="faq-item" onclick="toggleAnswer(this)">
+        <div class="faq-question">איך מסמנים משימות?</div>
+        <div class="faq-answer">
+          בטלפון – לחץ על המשימה הרצויה (1–6).<br />במחשב – המשימות מיועדות
+          לצפייה בלבד כדי למנוע לחיצות שגויות.
+        </div>
+      </div>
+      <div class="faq-item" onclick="toggleAnswer(this)">
+        <div class="faq-question">מי יכול לערוך משימות?</div>
+        <div class="faq-answer">רק מנהל לאחר כניסה עם קוד.</div>
+      </div>
+      <div class="faq-item" onclick="toggleAnswer(this)">
+        <div class="faq-question">מה הכפתור "📞" ליד מספר הטלפון?</div>
+        <div class="faq-answer">
+          לחיצה עליו תתחיל שיחה למספר הטלפון אם לא קורה שום דבר, נסה דרך chrome.
+        </div>
+      </div>
+      <div class="faq-item" onclick="toggleAnswer(this)">
+        <div class="faq-question">מה משמעות צבע המשימה ?</div>
+        <div class="faq-answer">
+          הצבע מראה את מצב המשימה:<br />
+          🟥 – יש משימה<br />
+          🟦 – יש משימת צוות<br />
+          🟩 – המשימה בוצעה
+        </div>
+      </div>
+      <div class="faq-item" onclick="toggleAnswer(this)">
+        <div class="faq-question">האם האתר מתעדכן בזמן אמת אצל כולם?</div>
+        <div class="faq-answer">
+          כן, כל השינויים מסתנכרנים מיידית דרך מסד הנתונים.
+        </div>
+      </div>
+      <div class="faq-item" onclick="toggleAnswer(this)">
+        <div class="faq-question">איך עורכים תיאורים של משימות?</div>
+        <div class="faq-answer">
+          אי אפשר לערוך. רק למחוק תיאור במצב ניהול בלחיצה עליו.
+        </div>
+      </div>
+      <div class="faq-item" onclick="toggleAnswer(this)">
+        <div class="faq-question">מה לעשות אם האתר לא נטען?</div>
+        <div class="faq-answer">
+          בדוק חיבור לאינטרנט ונסה לרענן את הדף. יש מצב שאתה בחניון תת-קרקעי :)
+        </div>
+      </div>
     </div>
-  </div>
-<div class="faq-button" onclick="toggleFaq()">i</div>
-
-<div class="faq-popup" id="faqPopup">
-  <div class="faq-item" onclick="toggleAnswer(this)">
-    <div class="faq-question">איך מסמנים משימות?</div>
-    <div class="faq-answer">בטלפון – לחץ על המשימה הרצויה (1–6).<br>במחשב – המשימות מיועדות לצפייה בלבד כדי למנוע לחיצות שגויות.</div>
-  </div>
-  <div class="faq-item" onclick="toggleAnswer(this)">
-    <div class="faq-question">מי יכול לערוך משימות?</div>
-    <div class="faq-answer">רק מנהל לאחר כניסה עם קוד.</div>
-  </div>
-  <div class="faq-item" onclick="toggleAnswer(this)">
-    <div class="faq-question">מה הכפתור "📞" ליד מספר הטלפון?</div>
-    <div class="faq-answer">לחיצה עליו תתחיל שיחה למספר הטלפון אם לא קורה שום דבר, נסה דרך chrome.</div>
-  </div>
-  <div class="faq-item" onclick="toggleAnswer(this)">
-    <div class="faq-question">מה משמעות צבע המשימה ?</div>
-    <div class="faq-answer">
-      הצבע מראה את מצב המשימה:<br>
-      🟥 – יש משימה<br>
-      🟦 – יש משימת צוות<br>
-      🟩 – המשימה בוצעה
-    </div>
-  </div>
-  <div class="faq-item" onclick="toggleAnswer(this)">
-    <div class="faq-question">האם האתר מתעדכן בזמן אמת אצל כולם?</div>
-    <div class="faq-answer">כן, כל השינויים מסתנכרנים מיידית דרך מסד הנתונים.</div>
-  </div>
-  <div class="faq-item" onclick="toggleAnswer(this)">
-    <div class="faq-question">איך עורכים תיאורים של משימות?</div>
-    <div class="faq-answer">אי אפשר לערוך. רק למחוק תיאור במצב ניהול בלחיצה עליו.</div>
-  </div>
-  <div class="faq-item" onclick="toggleAnswer(this)">
-    <div class="faq-question">מה לעשות אם האתר לא נטען?</div>
-    <div class="faq-answer">בדוק חיבור לאינטרנט ונסה לרענן את הדף. יש מצב שאתה בחניון תת-קרקעי :)</div>
-  </div>
-</div>
-
-<script>
-  function toggleFaq() {
-    const popup = document.getElementById('faqPopup');
-    popup.style.display = (popup.style.display === 'block') ? 'none' : 'block';
-  }
-
-  function toggleAnswer(element) {
-    const answer = element.querySelector('.faq-answer');
-    answer.style.display = (answer.style.display === 'block') ? 'none' : 'block';
-  }
-</script>
-</body>
+  </body>
 </html>
