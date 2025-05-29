@@ -536,134 +536,6 @@
           document.getElementById("target-name-2-container").style.display =
             document.getElementById("team-work").checked ? "block" : "none";
         });
-
-        // ...existing code...
-        async function autoArchiveAndClearIfNeeded() {
-          const now = new Date();
-          // Четверг = 4, после 23:00 или пятница
-          if (
-            (now.getDay() === 4 && now.getHours() >= 23) ||
-            now.getDay() === 5
-          ) {
-            const { weekNumber, dateRange } = getWeekDateRange();
-            const archiveKey = `archive_done_${weekNumber}_${dateRange}`;
-
-            // Проверка в базе данных, был ли уже архив
-            const archiveRef = ref(
-              db,
-              `archive/week_${weekNumber}/${dateRange}`
-            );
-            const archiveSnapshot = await get(archiveRef);
-            if (archiveSnapshot.exists()) {
-              localStorage.setItem(archiveKey, "1"); // для локальной оптимизации
-              return;
-            }
-
-            if (localStorage.getItem(archiveKey)) return;
-
-            try {
-              const snapshot = await get(ref(db, "notes"));
-              const notesData = snapshot.val() || {};
-              const archiveData = {};
-              names.forEach((name, rowIndex) => {
-                if (notesData[rowIndex]) {
-                  archiveData[rowIndex] = {};
-                  dayNames.forEach((_, colIndex) => {
-                    if (notesData[rowIndex][colIndex]) {
-                      archiveData[rowIndex][colIndex] = {};
-                      taskNumbers.forEach((taskNum) => {
-                        const taskData = notesData[rowIndex][colIndex][taskNum];
-                        if (taskData && taskData.note) {
-                          archiveData[rowIndex][colIndex][taskNum] = taskData;
-                        }
-                      });
-                    }
-                  });
-                }
-              });
-
-              if (Object.keys(archiveData).length > 0) {
-                await set(
-                  ref(db, `archive/week_${weekNumber}/${dateRange}`),
-                  archiveData
-                );
-                await set(ref(db, "notes"), null); // Очистить таблицу
-                localStorage.setItem(archiveKey, "1");
-              }
-            } catch (error) {
-              console.error("Auto-archive error:", error);
-            }
-          }
-        }
-        // ...existing code...
-
-        // Вызов автоматической архивации при загрузке страницы
-        autoArchiveAndClearIfNeeded();
-
-        const today = new Date().getDay();
-        const now = new Date();
-        const sunday = new Date(now);
-        // Только в субботу (6) начинается новая неделя
-        if (today === 6) {
-          sunday.setDate(now.getDate() - now.getDay() + 7);
-        } else {
-          sunday.setDate(now.getDate() - now.getDay());
-        }
-        for (let i = 0; i < 5; i++) {
-          const date = new Date(sunday);
-          date.setDate(sunday.getDate() + i);
-          const dd = String(date.getDate()).padStart(2, "0");
-          const mm = String(date.getMonth() + 1).padStart(2, "0");
-          const th = document.getElementById(`day-${i}`);
-          th.innerText = `${dayNames[i]} ${dd}.${mm}`;
-          if (i === today && today <= 4 && today !== 5 && today !== 6) {
-            th.classList.add("today");
-          }
-        }
-
-        const daySelect = document.getElementById("day-select");
-        if (today >= 0 && today <= 4 && today !== 5 && today !== 6) {
-          daySelect.value = today;
-        } else {
-          daySelect.value = 0;
-        }
-
-        daySelect.addEventListener("change", updateTableDisplay);
-        window.addEventListener("resize", () => {
-          updateTableDisplay();
-        });
-        updateTableDisplay();
-
-        document
-          .getElementById("task-overlay")
-          .addEventListener("click", (e) => {
-            if (e.target === document.getElementById("task-overlay")) {
-              document.getElementById("task-overlay").style.display = "none";
-            }
-          });
-
-        if (window.matchMedia("(max-width: 600px)").matches) {
-          history.pushState({ page: "main" }, null, location.href);
-          window.addEventListener("popstate", (event) => {
-            if (event.state?.page === "main") {
-              document.getElementById("back-confirm-overlay").style.display =
-                "flex";
-              history.pushState({ page: "confirm" }, null, location.href);
-            } else if (event.state?.page === "confirm") {
-              document.getElementById("back-confirm-overlay").style.display =
-                "none";
-              window.history.go(-2);
-            }
-          });
-
-          document
-            .getElementById("back-cancel")
-            .addEventListener("click", () => {
-              document.getElementById("back-confirm-overlay").style.display =
-                "none";
-              history.pushState({ page: "main" }, null, location.href);
-            });
-        }
       });
     </script>
     <script>
@@ -995,7 +867,6 @@
       </div>
     </div>
   </body>
-</html>
 <style>
   body {
     font-family: sans-serif;
@@ -1443,3 +1314,4 @@
     font-size: 14px;
   }
 </style>
+</html>
