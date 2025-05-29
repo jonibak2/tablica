@@ -238,8 +238,8 @@
           const phoneEntry = document.createElement("div");
           phoneEntry.className = "phone-entry";
           phoneEntry.innerHTML = `
-          <input type="tel" class="phone-number" placeholder="הזן מספר טלפון" required>
-          <input type="text" class="phone-name" placeholder="שם איש קשר" required>
+          <input type="tel" class="phone-number" placeholder="📞 הזן מספר טלפון" required>
+          <input type="text" class="phone-name" placeholder="🙍‍♂️ שם איש קשר" required>
           <button class="remove-phone">−</button>
         `;
           phoneList.appendChild(phoneEntry);
@@ -532,27 +532,33 @@
             }
           });
 
-        document.getElementById("admin-exit").addEventListener("click", () => {
-          isAdmin.status = false;
-          document.getElementById("single-panel").style.display = "none";
-          document.getElementById("admin-button").style.display = "block";
-          alert("יצאת ממצב ניהול");
-        });
-
         document.getElementById("team-work").addEventListener("change", () => {
           document.getElementById("target-name-2-container").style.display =
             document.getElementById("team-work").checked ? "block" : "none";
         });
 
-        // --- Автоматическая архивация и очистка таблицы по четвергам после 23:00 ---
+        // ...existing code...
         async function autoArchiveAndClearIfNeeded() {
           const now = new Date();
-          // Четверг = 4, после 23:00
-          if (now.getDay() === 4 && now.getHours() >= 23) {
-            // всегда выполняется для теста
-            // Проверяем, была ли уже архивация в этот четверг (локально)
+          // Четверг = 4, после 23:00 или пятница
+          if (
+            (now.getDay() === 4 && now.getHours() >= 23) ||
+            now.getDay() === 5
+          ) {
             const { weekNumber, dateRange } = getWeekDateRange();
             const archiveKey = `archive_done_${weekNumber}_${dateRange}`;
+
+            // Проверка в базе данных, был ли уже архив
+            const archiveRef = ref(
+              db,
+              `archive/week_${weekNumber}/${dateRange}`
+            );
+            const archiveSnapshot = await get(archiveRef);
+            if (archiveSnapshot.exists()) {
+              localStorage.setItem(archiveKey, "1"); // для локальной оптимизации
+              return;
+            }
+
             if (localStorage.getItem(archiveKey)) return;
 
             try {
@@ -585,11 +591,11 @@
                 localStorage.setItem(archiveKey, "1");
               }
             } catch (error) {
-              // Ошибки не блокируют дальнейшую работу
               console.error("Auto-archive error:", error);
             }
           }
         }
+        // ...existing code...
 
         // Вызов автоматической архивации при загрузке страницы
         autoArchiveAndClearIfNeeded();
@@ -597,7 +603,8 @@
         const today = new Date().getDay();
         const now = new Date();
         const sunday = new Date(now);
-        if (today === 5 || today === 6) {
+        // Только в субботу (6) начинается новая неделя
+        if (today === 6) {
           sunday.setDate(now.getDate() - now.getDay() + 7);
         } else {
           sunday.setDate(now.getDate() - now.getDay());
@@ -672,453 +679,6 @@
           answer.style.display === "block" ? "none" : "block";
       }
     </script>
-    <style>
-      body {
-        font-family: sans-serif;
-        padding: 20px;
-        background: #ffffff;
-        margin: 0;
-        position: relative;
-      }
-      .header-image {
-        width: 100%;
-        max-width: 300px;
-        height: auto;
-        object-fit: contain;
-        display: block;
-        margin: 10px auto;
-      }
-      table {
-        border-collapse: collapse;
-        width: 100%;
-        max-width: 100%;
-        margin: 10px 0;
-      }
-      th,
-      td {
-        border: 1px solid #ccc;
-        padding: 8px;
-        text-align: center;
-        vertical-align: top;
-        position: relative;
-      }
-      th {
-        background: #83a737;
-        color: white;
-      }
-      .today {
-        background: #965fa9 !important;
-        color: rgb(255, 255, 255);
-      }
-      th.name {
-        background: #fc9247;
-      }
-      .checkboxes label {
-        display: inline-block;
-        margin: 0 2px;
-        position: relative;
-        font-weight: bold;
-        padding: 2px;
-        border: none;
-        min-width: 22px;
-        text-align: center;
-      }
-      .no-task {
-        color: black;
-      }
-      .has-task {
-        color: #ff0000;
-      }
-      .completed {
-        color: #008000;
-      }
-      .team_cyan {
-        color: #00ced1;
-        border: 1px solid #00ced1;
-        border-radius: 3px;
-      }
-      .tooltip {
-        display: none;
-        position: absolute;
-        bottom: 100%;
-        right: 0;
-        background: #fff;
-        border: 1px solid #ccc;
-        padding: 8px;
-        z-index: 10;
-        max-width: 200px;
-        white-space: pre-line;
-        font-size: 0.9em;
-      }
-      label:hover .tooltip {
-        display: block;
-      }
-      #day-select {
-        display: block;
-        margin: 10px auto;
-        padding: 5px;
-        font-size: 1em;
-        width: 200px;
-      }
-      #admin-button {
-        display: block;
-        margin: 10px auto;
-        padding: 8px 12px;
-        font-size: 0.9em;
-        background: #83a737;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      #admin-panel,
-      #single-panel {
-        display: none;
-        position: relative;
-        background: white;
-        border: 1px solid #ccc;
-        padding: 15px;
-        width: 100%;
-        max-width: 100%;
-        margin: 10px 0;
-        box-sizing: border-box;
-        z-index: 100;
-      }
-      textarea,
-      input,
-      select {
-        width: 100%;
-        margin-bottom: 8px;
-        padding: 5px;
-        font-size: 0.9em;
-      }
-      button {
-        padding: 8px;
-        font-size: 0.9em;
-        width: 100%;
-        margin-bottom: 5px;
-      }
-      .required {
-        color: red;
-      }
-      #phone-list {
-        margin-bottom: 5px;
-      }
-      .phone-entry {
-        display: flex;
-        align-items: center;
-        margin-bottom: 8px;
-      }
-      .phone-number {
-        width: 65%;
-        margin-left: 5px;
-      }
-      .phone-name {
-        width: 35%;
-      }
-      #add-phone {
-        display: block;
-        padding: 5px;
-        font-size: 1em;
-        width: auto;
-        background: #83a737;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        margin: 5px 0;
-      }
-      .remove-phone {
-        padding: 5px;
-        font-size: 1em;
-        width: auto;
-        background: #ff4444;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        margin-right: 5px;
-      }
-      #task-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.8);
-        z-index: 200;
-        justify-content: center;
-        align-items: center;
-      }
-      #task-overlay-content {
-        background: #fff;
-        padding: 20px;
-        max-width: 90%;
-        max-height: 80%;
-        overflow-y: auto;
-        font-size: 1.5em;
-        text-align: right;
-        border-radius: 8px;
-        white-space: pre-line;
-        line-height: 2;
-      }
-      #task-overlay-content p {
-        margin: 0 0 15px 0;
-        direction: rtl;
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-      }
-      .call-phone {
-        display: none;
-        width: auto;
-        height: auto;
-        padding: 0;
-        font-size: 1em;
-        background: none;
-        border: none;
-        cursor: pointer;
-        margin-right: 5px;
-        line-height: 1;
-        text-align: center;
-        text-decoration: none;
-        color: black;
-      }
-      #back-confirm-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.8);
-        z-index: 300;
-        justify-content: center;
-        align-items: center;
-      }
-      #back-confirm-content {
-        background: #fff;
-        padding: 20px;
-        max-width: 90%;
-        text-align: center;
-        border-radius: 8px;
-        font-size: 1.2em;
-      }
-      #back-cancel {
-        margin-top: 10px;
-        padding: 8px 16px;
-        font-size: 1em;
-        background: #83a737;
-        color: #fff;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      #codes-section {
-        margin-bottom: 8px;
-      }
-      #codes-section label {
-        display: block;
-        margin-bottom: 2px;
-      }
-      .code-row {
-        display: flex;
-        align-items: center;
-        margin-bottom: 2px;
-      }
-      .code-row input[type="text"] {
-        width: 60%;
-        padding: 3px;
-        font-size: 0.9em;
-        margin-left: 5px;
-      }
-      .checkbox-container {
-        width: 40%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin: 0;
-        text-align: center;
-      }
-      .checkbox-container input[type="checkbox"] {
-        margin: 0;
-      }
-      .checkbox-container label {
-        font-size: 0.9em;
-        margin-top: 1px;
-        line-height: 1;
-      }
-      .code-options {
-        display: none;
-        margin-top: -27px;
-        margin-bottom: 2px;
-        padding-right: 40%;
-      }
-      .code-options select {
-        width: 60%;
-        font-size: 0.8em;
-        padding: 3px;
-        margin-left: 5px;
-      }
-      .team-work-row {
-        display: flex;
-        align-items: center;
-        margin-bottom: 8px;
-      }
-      .team-work-row select {
-        width: 60%;
-        padding: 5px;
-        font-size: 0.9em;
-        margin-left: 5px;
-      }
-      #target-name-2-container {
-        display: none;
-        margin-bottom: 8px;
-      }
-
-      @media (max-width: 600px) {
-        body {
-          padding: 10px;
-        }
-        .header-image {
-          max-width: 150px;
-          margin: 5px auto;
-        }
-        table {
-          font-size: 0.85em;
-        }
-        th,
-        td {
-          padding: 5px;
-        }
-        .checkboxes label {
-          margin: 0 1px;
-        }
-        .tooltip {
-          max-width: 150px;
-          font-size: 0.8em;
-        }
-        #day-select {
-          width: 150px;
-          font-size: 0.9em;
-        }
-        #admin-button,
-        #admin-panel {
-          display: none;
-        }
-        #single-panel {
-          padding: 10px;
-        }
-        .call-phone {
-          display: inline-block;
-        }
-        .phone-number {
-          width: 60%;
-        }
-        .phone-name {
-          width: 40%;
-        }
-        .code-row input[type="text"] {
-          width: 55%;
-        }
-        .checkbox-container {
-          width: 45%;
-        }
-        .checkbox-container label {
-          font-size: 0.85em;
-        }
-        .code-options select {
-          width: 55%;
-        }
-        .team-work-row select {
-          width: 55%;
-        }
-      }
-
-      @media (min-width: 601px) {
-        #day-select {
-          display: none;
-        }
-        .checkboxes input[type="checkbox"]:disabled {
-          opacity: 1;
-          cursor: default;
-        }
-      }
-      .faq-button {
-        position: fixed;
-        bottom: 20px;
-        left: 20px;
-        background-color: #83a737;
-        color: white;
-        border-radius: 50%;
-        width: 36px;
-        height: 36px;
-        font-weight: bold;
-        font-size: 20px;
-        cursor: pointer;
-        text-align: center;
-        line-height: 36px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-        z-index: 9999;
-        transition: background-color 0.3s ease;
-      }
-
-      .faq-button:hover {
-        background-color: #83a737;
-      }
-
-      .faq-popup {
-        position: fixed;
-        bottom: 70px;
-        left: 20px;
-        width: 320px;
-        max-height: 400px;
-        overflow-y: auto;
-        background-color: #ffffff;
-        border: 2px solid #83a737;
-        border-radius: 12px;
-        padding: 16px;
-        font-family: sans-serif;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        display: none;
-        direction: rtl;
-        z-index: 9999;
-        animation: fadeIn 0.3s ease;
-      }
-
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-      .faq-item {
-        margin-bottom: 12px;
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-        border-radius: 8px;
-        padding: 6px;
-      }
-
-      .faq-item:hover {
-        background-color: #f1f1f1;
-      }
-
-      .faq-question {
-        font-weight: bold;
-        color: #333;
-      }
-
-      .faq-answer {
-        display: none;
-        margin-top: 6px;
-        color: #555;
-        font-size: 14px;
-      }
-    </style>
   </head>
   <body>
     <img src="utech.jpg" alt="Utech Logo" class="header-image" />
@@ -1344,16 +904,12 @@
       <label>טלפון:<span class="required">*</span></label>
       <div id="phone-list">
         <div class="phone-entry">
-          <input
-            type="tel"
-            class="phone-number"
-            placeholder="הזן מספר טלפון"
-            required
-          />
+          <input type="tel" class="phone-number" placeholder="📞 הזן מספר טלפון"
+          " required />
           <input
             type="text"
             class="phone-name"
-            placeholder="שם איש קשר"
+            placeholder="🙍‍♂️ שם איש קשר"
             required
           />
         </div>
@@ -1440,3 +996,450 @@
     </div>
   </body>
 </html>
+<style>
+  body {
+    font-family: sans-serif;
+    padding: 20px;
+    background: #ffffff;
+    margin: 0;
+    position: relative;
+  }
+  .header-image {
+    width: 100%;
+    max-width: 300px;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    margin: 10px auto;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    max-width: 100%;
+    margin: 10px 0;
+  }
+  th,
+  td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: center;
+    vertical-align: top;
+    position: relative;
+  }
+  th {
+    background: #83a737;
+    color: white;
+  }
+  .today {
+    background: #965fa9 !important;
+    color: rgb(255, 255, 255);
+  }
+  th.name {
+    background: #fc9247;
+  }
+  .checkboxes label {
+    display: inline-block;
+    margin: 0 2px;
+    position: relative;
+    font-weight: bold;
+    padding: 2px;
+    border: none;
+    min-width: 22px;
+    text-align: center;
+  }
+  .no-task {
+    color: black;
+  }
+  .has-task {
+    color: #ff0000;
+  }
+  .completed {
+    color: #008000;
+  }
+  .team_cyan {
+    color: #00ced1;
+    border: 1px solid #00ced1;
+    border-radius: 3px;
+  }
+  .tooltip {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 8px;
+    z-index: 10;
+    max-width: 200px;
+    white-space: pre-line;
+    font-size: 0.9em;
+  }
+  label:hover .tooltip {
+    display: block;
+  }
+  #day-select {
+    display: block;
+    margin: 10px auto;
+    padding: 5px;
+    font-size: 1em;
+    width: 200px;
+  }
+  #admin-button {
+    display: block;
+    margin: 10px auto;
+    padding: 8px 12px;
+    font-size: 0.9em;
+    background: #83a737;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  #admin-panel,
+  #single-panel {
+    display: none;
+    position: relative;
+    background: white;
+    border: 1px solid #ccc;
+    padding: 15px;
+    width: 100%;
+    max-width: 100%;
+    margin: 10px 0;
+    box-sizing: border-box;
+    z-index: 100;
+  }
+  textarea,
+  input,
+  select {
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 5px;
+    font-size: 0.9em;
+  }
+  button {
+    padding: 8px;
+    font-size: 0.9em;
+    width: 100%;
+    margin-bottom: 5px;
+  }
+  .required {
+    color: red;
+  }
+  #phone-list {
+    margin-bottom: 5px;
+  }
+  .phone-entry {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .phone-number {
+    width: 65%;
+    margin-left: 5px;
+  }
+  .phone-name {
+    width: 35%;
+  }
+  #add-phone {
+    display: block;
+    padding: 5px;
+    font-size: 1em;
+    width: auto;
+    background: #83a737;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    margin: 5px 0;
+  }
+  .remove-phone {
+    padding: 5px;
+    font-size: 1em;
+    width: auto;
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    margin-right: 5px;
+  }
+  #task-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 200;
+    justify-content: center;
+    align-items: center;
+  }
+  #task-overlay-content {
+    background: #fff;
+    padding: 20px;
+    max-width: 90%;
+    max-height: 80%;
+    overflow-y: auto;
+    font-size: 1.5em;
+    text-align: right;
+    border-radius: 8px;
+    white-space: pre-line;
+    line-height: 2;
+  }
+  #task-overlay-content p {
+    margin: 0 0 15px 0;
+    direction: rtl;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .call-phone {
+    display: none;
+    width: auto;
+    height: auto;
+    padding: 0;
+    font-size: 1em;
+    background: none;
+    border: none;
+    cursor: pointer;
+    margin-right: 5px;
+    line-height: 1;
+    text-align: center;
+    text-decoration: none;
+    color: black;
+  }
+  #back-confirm-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 300;
+    justify-content: center;
+    align-items: center;
+  }
+  #back-confirm-content {
+    background: #fff;
+    padding: 20px;
+    max-width: 90%;
+    text-align: center;
+    border-radius: 8px;
+    font-size: 1.2em;
+  }
+  #back-cancel {
+    margin-top: 10px;
+    padding: 8px 16px;
+    font-size: 1em;
+    background: #83a737;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  #codes-section {
+    margin-bottom: 8px;
+  }
+  #codes-section label {
+    display: block;
+    margin-bottom: 2px;
+  }
+  .code-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2px;
+  }
+  .code-row input[type="text"] {
+    width: 60%;
+    padding: 3px;
+    font-size: 0.9em;
+    margin-left: 5px;
+  }
+  .checkbox-container {
+    width: 40%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    text-align: center;
+  }
+  .checkbox-container input[type="checkbox"] {
+    margin: 0;
+  }
+  .checkbox-container label {
+    font-size: 0.9em;
+    margin-top: 1px;
+    line-height: 1;
+  }
+  .code-options {
+    display: none;
+    margin-top: -27px;
+    margin-bottom: 2px;
+    padding-right: 40%;
+  }
+  .code-options select {
+    width: 60%;
+    font-size: 0.8em;
+    padding: 3px;
+    margin-left: 5px;
+  }
+  .team-work-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .team-work-row select {
+    width: 60%;
+    padding: 5px;
+    font-size: 0.9em;
+    margin-left: 5px;
+  }
+  #target-name-2-container {
+    display: none;
+    margin-bottom: 8px;
+  }
+
+  @media (max-width: 600px) {
+    body {
+      padding: 10px;
+    }
+    .header-image {
+      max-width: 150px;
+      margin: 5px auto;
+    }
+    table {
+      font-size: 0.85em;
+    }
+    th,
+    td {
+      padding: 5px;
+    }
+    .checkboxes label {
+      margin: 0 1px;
+    }
+    .tooltip {
+      max-width: 150px;
+      font-size: 0.8em;
+    }
+    #day-select {
+      width: 150px;
+      font-size: 0.9em;
+    }
+    #admin-button,
+    #admin-panel {
+      display: none;
+    }
+    #single-panel {
+      padding: 10px;
+    }
+    .call-phone {
+      display: inline-block;
+    }
+    .phone-number {
+      width: 60%;
+    }
+    .phone-name {
+      width: 40%;
+    }
+    .code-row input[type="text"] {
+      width: 55%;
+    }
+    .checkbox-container {
+      width: 45%;
+    }
+    .checkbox-container label {
+      font-size: 0.85em;
+    }
+    .code-options select {
+      width: 55%;
+    }
+    .team-work-row select {
+      width: 55%;
+    }
+  }
+
+  @media (min-width: 601px) {
+    #day-select {
+      display: none;
+    }
+    .checkboxes input[type="checkbox"]:disabled {
+      opacity: 1;
+      cursor: default;
+    }
+  }
+  .faq-button {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background-color: #fc9247;
+    color: white;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    font-weight: bold;
+    font-size: 20px;
+    cursor: pointer;
+    text-align: center;
+    line-height: 36px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    transition: background-color 0.3s ease;
+  }
+
+  .faq-button:hover {
+    background-color: #f57f2a;
+  }
+
+  .faq-popup {
+    position: fixed;
+    bottom: 70px;
+    left: 20px;
+    width: 320px;
+    max-height: 400px;
+    overflow-y: auto;
+    background-color: #ffffff;
+    border: 2px solid #fc9247;
+    border-radius: 12px;
+    padding: 16px;
+    font-family: sans-serif;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    display: none;
+    direction: rtl;
+    z-index: 9999;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .faq-item {
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    border-radius: 8px;
+    padding: 6px;
+  }
+
+  .faq-item:hover {
+    background-color: #f1f1f1;
+  }
+
+  .faq-question {
+    font-weight: bold;
+    color: #333;
+  }
+
+  .faq-answer {
+    display: none;
+    margin-top: 6px;
+    color: #555;
+    font-size: 14px;
+  }
+</style>
