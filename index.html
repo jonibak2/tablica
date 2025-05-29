@@ -536,67 +536,40 @@
           document.getElementById("target-name-2-container").style.display =
             document.getElementById("team-work").checked ? "block" : "none";
         });
-
-        // ...existing code...
-        async function autoArchiveAndClearIfNeeded() {
-          const now = new Date();
-          // Четверг = 4, после 23:00 или пятница
-          if (
-            (now.getDay() === 4 && now.getHours() >= 23) ||
-            now.getDay() === 5
-          ) {
-            const { weekNumber, dateRange } = getWeekDateRange();
-            const archiveKey = `archive_done_${weekNumber}_${dateRange}`;
-
-            // Проверка в базе данных, был ли уже архив
-            const archiveRef = ref(
-              db,
-              `archive/week_${weekNumber}/${dateRange}`
-            );
-            const archiveSnapshot = await get(archiveRef);
-            if (archiveSnapshot.exists()) {
-              localStorage.setItem(archiveKey, "1"); // для локальной оптимизации
-              return;
+        document
+          .getElementById("task-overlay")
+          .addEventListener("click", (e) => {
+            if (
+              e.target === document.getElementById("task-overlay") ||
+              e.target === document.getElementById("task-overlay-content")
+            ) {
+              document.getElementById("task-overlay").style.display = "none";
             }
+          });
 
-            if (localStorage.getItem(archiveKey)) return;
-
-            try {
-              const snapshot = await get(ref(db, "notes"));
-              const notesData = snapshot.val() || {};
-              const archiveData = {};
-              names.forEach((name, rowIndex) => {
-                if (notesData[rowIndex]) {
-                  archiveData[rowIndex] = {};
-                  dayNames.forEach((_, colIndex) => {
-                    if (notesData[rowIndex][colIndex]) {
-                      archiveData[rowIndex][colIndex] = {};
-                      taskNumbers.forEach((taskNum) => {
-                        const taskData = notesData[rowIndex][colIndex][taskNum];
-                        if (taskData && taskData.note) {
-                          archiveData[rowIndex][colIndex][taskNum] = taskData;
-                        }
-                      });
-                    }
-                  });
-                }
-              });
-
-              if (Object.keys(archiveData).length > 0) {
-                await set(
-                  ref(db, `archive/week_${weekNumber}/${dateRange}`),
-                  archiveData
-                );
-                await set(ref(db, "notes"), null); // Очистить таблицу
-                localStorage.setItem(archiveKey, "1");
-              }
-            } catch (error) {
-              console.error("Auto-archive error:", error);
+        if (window.matchMedia("(max-width: 600px)").matches) {
+          history.pushState({ page: "main" }, null, location.href);
+          window.addEventListener("popstate", (event) => {
+            if (event.state?.page === "main") {
+              document.getElementById("back-confirm-overlay").style.display =
+                "flex";
+              history.pushState({ page: "confirm" }, null, location.href);
+            } else if (event.state?.page === "confirm") {
+              document.getElementById("back-confirm-overlay").style.display =
+                "none";
+              window.history.go(-2);
             }
-          }
+          });
+
+          document
+            .getElementById("back-cancel")
+            .addEventListener("click", () => {
+              document.getElementById("back-confirm-overlay").style.display =
+                "none";
+              history.pushState({ page: "main" }, null, location.href);
+            });
         }
-        // ...existing code...
-      }); // <-- Add this to close DOMContentLoaded
+      });
     </script>
     <script>
       function toggleFaq() {
