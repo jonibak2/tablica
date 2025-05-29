@@ -536,7 +536,67 @@
           document.getElementById("target-name-2-container").style.display =
             document.getElementById("team-work").checked ? "block" : "none";
         });
-      });
+
+        // ...existing code...
+        async function autoArchiveAndClearIfNeeded() {
+          const now = new Date();
+          // Четверг = 4, после 23:00 или пятница
+          if (
+            (now.getDay() === 4 && now.getHours() >= 23) ||
+            now.getDay() === 5
+          ) {
+            const { weekNumber, dateRange } = getWeekDateRange();
+            const archiveKey = `archive_done_${weekNumber}_${dateRange}`;
+
+            // Проверка в базе данных, был ли уже архив
+            const archiveRef = ref(
+              db,
+              `archive/week_${weekNumber}/${dateRange}`
+            );
+            const archiveSnapshot = await get(archiveRef);
+            if (archiveSnapshot.exists()) {
+              localStorage.setItem(archiveKey, "1"); // для локальной оптимизации
+              return;
+            }
+
+            if (localStorage.getItem(archiveKey)) return;
+
+            try {
+              const snapshot = await get(ref(db, "notes"));
+              const notesData = snapshot.val() || {};
+              const archiveData = {};
+              names.forEach((name, rowIndex) => {
+                if (notesData[rowIndex]) {
+                  archiveData[rowIndex] = {};
+                  dayNames.forEach((_, colIndex) => {
+                    if (notesData[rowIndex][colIndex]) {
+                      archiveData[rowIndex][colIndex] = {};
+                      taskNumbers.forEach((taskNum) => {
+                        const taskData = notesData[rowIndex][colIndex][taskNum];
+                        if (taskData && taskData.note) {
+                          archiveData[rowIndex][colIndex][taskNum] = taskData;
+                        }
+                      });
+                    }
+                  });
+                }
+              });
+
+              if (Object.keys(archiveData).length > 0) {
+                await set(
+                  ref(db, `archive/week_${weekNumber}/${dateRange}`),
+                  archiveData
+                );
+                await set(ref(db, "notes"), null); // Очистить таблицу
+                localStorage.setItem(archiveKey, "1");
+              }
+            } catch (error) {
+              console.error("Auto-archive error:", error);
+            }
+          }
+        }
+        // ...existing code...
+      }); // <-- Add this to close DOMContentLoaded
     </script>
     <script>
       function toggleFaq() {
@@ -867,6 +927,7 @@
       </div>
     </div>
   </body>
+</html>
 <style>
   body {
     font-family: sans-serif;
@@ -1314,4 +1375,3 @@
     font-size: 14px;
   }
 </style>
-</html>
