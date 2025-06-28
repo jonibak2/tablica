@@ -150,100 +150,56 @@
                 checked: false,
               };
               
-              // Показываем информацию о задаче в alert вместо prompt
-              const phoneText = currentData.phones ? currentData.phones.map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`).join("\n") : "";
-              const taskInfo = `שם: ${currentData.name}\nיום: ${currentData.day}\nמספר משימה: ${currentData.taskNumber}\nכתובת: ${currentData.address}\nקוד כניסה: ${currentData.code}\n${phoneText}\nסיבה: ${currentData.reason}\nהערות: ${currentData.comments}`;
-              
-              if (confirm(`מידע על המשימה:\n\n${taskInfo}\n\nהאם למחוק משימה זו?`)) {
-                try {
-                  await set(ref(db, dbKey), null);
-                  if (currentData.teamColor) {
-                    for (
-                      let otherRowIndex = 0;
-                      otherRowIndex < names.length;
-                      otherRowIndex++
-                    ) {
-                      if (otherRowIndex !== rowIndex) {
-                        const otherKey = `notes/${dateRange}_${weekNumber}/${otherRowIndex}/${colIndex}/${
-                          i + 1
-                        }`;
-                        const otherSnapshot = await get(ref(db, otherKey));
-                        const otherData = otherSnapshot.val();
-                        if (
-                          otherData?.address === currentData.address &&
-                          otherData?.teamColor === currentData.teamColor
-                        ) {
-                          await set(ref(db, otherKey), null);
-                        }
-                      }
-                    }
-                  }
-                } catch (error) {
-                  console.error("Error deleting task:", error);
-                  alert("שגיאה במחיקת המשימה");
-                }
-              }
+              // Заполняем поля в админ панели данными задачи
+              fillAdminPanelWithTaskData(currentData, dbKey, rowIndex, colIndex, i + 1);
             }
           });
 
-          setupTaskOverlay(label, checkbox, tooltip);
+          // Добавляем обработчики для долгого нажатия
+          let longPressTimer;
+          let isLongPress = false;
+
+          label.addEventListener("mousedown", (e) => {
+            if (e.target !== checkbox) {
+              longPressTimer = setTimeout(() => {
+                isLongPress = true;
+                showTaskFullScreen(tooltip.innerText);
+              }, 500);
+            }
+          });
+
+          label.addEventListener("mouseup", () => {
+            clearTimeout(longPressTimer);
+          });
+
+          label.addEventListener("mouseleave", () => {
+            clearTimeout(longPressTimer);
+          });
+
+          // Для мобильных устройств
+          label.addEventListener("touchstart", (e) => {
+            if (e.target !== checkbox) {
+              longPressTimer = setTimeout(() => {
+                isLongPress = true;
+                showTaskFullScreen(tooltip.innerText);
+              }, 500);
+            }
+          });
+
+          label.addEventListener("touchend", () => {
+            clearTimeout(longPressTimer);
+          });
+
+          label.addEventListener("touchcancel", () => {
+            clearTimeout(longPressTimer);
+          });
+
           label.appendChild(checkbox);
           label.appendChild(tooltip);
           container.appendChild(label);
         });
 
         cell.appendChild(container);
-      }
-
-      function setupTaskOverlay(label, checkbox, tooltip) {
-        let touchTimer;
-        const showTaskOverlay = () => {
-          const overlay = document.getElementById("task-overlay");
-          const overlayContent = document.getElementById(
-            "task-overlay-content"
-          );
-          
-          // Получаем данные из tooltip
-          const tooltipText = tooltip.innerText;
-          if (!tooltipText.trim()) {
-            overlay.style.display = "none";
-            return;
-          }
-          
-          // Разбиваем текст на строки
-          const lines = tooltipText.split(/[\r\n]+/);
-          
-          overlayContent.innerHTML = lines
-            .map((line) => {
-              if (line.match(/טלפון \d+:/)) {
-                const phoneMatch = line.match(/טלפון \d+: ([^,]+), שם: (.*)/);
-                if (phoneMatch) {
-                  const phoneNumber = phoneMatch[1].trim();
-                  // If device can make calls, clicking will open dialer
-                  return `<p>${line}<a href="tel:${phoneNumber}" class="call-phone">📞</a></p>`;
-                }
-              }
-              return `<p>${line.trim()}</p>`;
-            })
-            .join("");
-          overlay.style.display = "flex";
-        };
-
-        label.addEventListener("touchstart", (e) => {
-          if (e.target !== checkbox) {
-            e.preventDefault();
-            touchTimer = setTimeout(showTaskOverlay, 500);
-          }
-        });
-
-        label.addEventListener("touchend", () => clearTimeout(touchTimer));
-        label.addEventListener("touchcancel", () => clearTimeout(touchTimer));
-        label.addEventListener("mousedown", (e) => {
-          if (e.target !== checkbox) {
-            touchTimer = setTimeout(showTaskOverlay, 500);
-          }
-        });
-        label.addEventListener("mouseup", () => clearTimeout(touchTimer));
       }
 
       function setupPhoneEntries() {
@@ -693,32 +649,40 @@
             ) {
               return alert("נתונים לא תקינים");
             }
+            
             try {
-              // Используем ключ с привязкой к неделе
               const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
-              const dbKey = `notes/${dateRange}_${weekNumber}/${rowIndex1}/${targetDay}/${targetNumber}`;
+              const isEditing = document.getElementById('single-panel').dataset.isEditing === 'true';
               
-              await set(ref(db, dbKey), {
-                checked: false,
-                name: targetName1,
-                day: dayNames[parseInt(targetDay)],
-                taskNumber: parseInt(targetNumber),
-                address: address,
-                code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
-                phones: phones,
-                reason: reason,
-                comments: comments,
-                teamColor: teamColor,
-              });
-
-              if (isTeamWork) {
-                const rowIndex2 = names.indexOf(targetName2);
-                if (rowIndex2 === -1)
-                  return alert("נתונים לא תקינים עבור האדם השני");
-                const dbKey2 = `notes/${dateRange}_${weekNumber}/${rowIndex2}/${targetDay}/${targetNumber}`;
-                await set(ref(db, dbKey2), {
+              if (isEditing) {
+                // Редактируем существующую задачу
+                const dbKey = document.getElementById('single-panel').dataset.dbKey;
+                const originalRowIndex = parseInt(document.getElementById('single-panel').dataset.rowIndex);
+                const originalColIndex = parseInt(document.getElementById('single-panel').dataset.colIndex);
+                const originalTaskNumber = parseInt(document.getElementById('single-panel').dataset.taskNumber);
+                
+                // Получаем данные оригинальной задачи для проверки командной работы
+                const originalSnapshot = await get(ref(db, dbKey));
+                const originalData = originalSnapshot.val();
+                
+                // Если это была командная работа, удаляем второго участника
+                if (originalData && originalData.teamColor) {
+                  for (let otherRowIndex = 0; otherRowIndex < names.length; otherRowIndex++) {
+                    if (otherRowIndex !== originalRowIndex) {
+                      const otherKey = `notes/${dateRange}_${weekNumber}/${otherRowIndex}/${originalColIndex}/${originalTaskNumber}`;
+                      const otherSnapshot = await get(ref(db, otherKey));
+                      const otherData = otherSnapshot.val();
+                      if (otherData && otherData.teamColor === originalData.teamColor) {
+                        await set(ref(db, otherKey), null);
+                      }
+                    }
+                  }
+                }
+                
+                // Обновляем основную задачу
+                await set(ref(db, dbKey), {
                   checked: false,
-                  name: targetName2,
+                  name: targetName1,
                   day: dayNames[parseInt(targetDay)],
                   taskNumber: parseInt(targetNumber),
                   address: address,
@@ -728,8 +692,77 @@
                   comments: comments,
                   teamColor: teamColor,
                 });
+                
+                // Если это командная работа, добавляем второго участника
+                if (isTeamWork) {
+                  const rowIndex2 = names.indexOf(targetName2);
+                  if (rowIndex2 !== -1) {
+                    const dbKey2 = `notes/${dateRange}_${weekNumber}/${rowIndex2}/${targetDay}/${targetNumber}`;
+                    await set(ref(db, dbKey2), {
+                      checked: false,
+                      name: targetName2,
+                      day: dayNames[parseInt(targetDay)],
+                      taskNumber: parseInt(targetNumber),
+                      address: address,
+                      code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
+                      phones: phones,
+                      reason: reason,
+                      comments: comments,
+                      teamColor: teamColor,
+                    });
+                  }
+                }
+                
+                // Очищаем флаг редактирования
+                document.getElementById('single-panel').dataset.isEditing = 'false';
+                delete document.getElementById('single-panel').dataset.dbKey;
+                delete document.getElementById('single-panel').dataset.rowIndex;
+                delete document.getElementById('single-panel').dataset.colIndex;
+                delete document.getElementById('single-panel').dataset.taskNumber;
+                
+                showNotification('המשימה עודכנה בהצלחה');
+              } else {
+                // Создаем новую задачу
+                const dbKey = `notes/${dateRange}_${weekNumber}/${rowIndex1}/${targetDay}/${targetNumber}`;
+                
+                await set(ref(db, dbKey), {
+                  checked: false,
+                  name: targetName1,
+                  day: dayNames[parseInt(targetDay)],
+                  taskNumber: parseInt(targetNumber),
+                  address: address,
+                  code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
+                  phones: phones,
+                  reason: reason,
+                  comments: comments,
+                  teamColor: teamColor,
+                });
+
+                if (isTeamWork) {
+                  const rowIndex2 = names.indexOf(targetName2);
+                  if (rowIndex2 === -1)
+                    return alert("נתונים לא תקינים עבור האדם השני");
+                  const dbKey2 = `notes/${dateRange}_${weekNumber}/${rowIndex2}/${targetDay}/${targetNumber}`;
+                  await set(ref(db, dbKey2), {
+                    checked: false,
+                    name: targetName2,
+                    day: dayNames[parseInt(targetDay)],
+                    taskNumber: parseInt(targetNumber),
+                    address: address,
+                    code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
+                    phones: phones,
+                    reason: reason,
+                    comments: comments,
+                    teamColor: teamColor,
+                  });
+                }
+                
+                showNotification('משימה חדשה נשמרה בהצלחה');
               }
-              alert("משימה נשמרה בהצלחה");
+              
+              // Перезагружаем задачи для обновления отображения
+              reloadTasksForWeek();
+              
             } catch (error) {
               console.error("Error saving task:", error);
               alert("שגיאה בשמירת המשימה");
@@ -818,6 +851,234 @@
         createDayNotesRow();
         updateDayNotesDisplay();
       });
+
+      function fillAdminPanelWithTaskData(taskData, dbKey, rowIndex, colIndex, taskNumber) {
+        // Заполняем поля в админ панели данными задачи
+        document.getElementById('target-name').value = taskData.name || '';
+        document.getElementById('target-day').value = dayNames.indexOf(taskData.day);
+        document.getElementById('target-number').value = taskData.taskNumber || '';
+        document.getElementById('task-address').value = taskData.address || '';
+        document.getElementById('task-reason').value = taskData.reason || '';
+        document.getElementById('task-comments').value = taskData.comments || '';
+        
+        // Обрабатываем код входа
+        const codeEntry = document.getElementById('code-entry');
+        const noCodeEntry = document.getElementById('no-code-entry');
+        const codeEntryOptions = document.getElementById('code-entry-options');
+        const codeEntryOption = document.getElementById('code-entry-option');
+        
+        if (taskData.code === 'יש שומר' || taskData.code === 'אין קודן / דלת פתוחה') {
+          noCodeEntry.checked = true;
+          codeEntry.style.display = 'none';
+          codeEntryOptions.style.display = 'block';
+          codeEntryOption.value = taskData.code;
+        } else {
+          noCodeEntry.checked = false;
+          codeEntry.style.display = 'block';
+          codeEntryOptions.style.display = 'none';
+          codeEntry.value = taskData.code || '';
+        }
+        
+        // Обрабатываем телефоны
+        const phoneList = document.getElementById('phone-list');
+        phoneList.innerHTML = '';
+        
+        if (taskData.phones && taskData.phones.length > 0) {
+          taskData.phones.forEach((phone, index) => {
+            const phoneEntry = document.createElement('div');
+            phoneEntry.className = 'phone-entry';
+            phoneEntry.innerHTML = `
+              <input type="tel" class="phone-number" placeholder="📞 הזן מספר טלפון" value="${phone.phone || ''}" required>
+              <input type="text" class="phone-name" placeholder="🙍‍♂️ שם איש קשר" value="${phone.name || ''}" required>
+              <button class="remove-phone">−</button>
+            `;
+            phoneList.appendChild(phoneEntry);
+            
+            phoneEntry.querySelector('.remove-phone').addEventListener('click', () => {
+              if (phoneList.children.length > 1) {
+                phoneEntry.remove();
+              }
+            });
+          });
+        } else {
+          // Добавляем хотя бы одно поле телефона
+          const phoneEntry = document.createElement('div');
+          phoneEntry.className = 'phone-entry';
+          phoneEntry.innerHTML = `
+            <input type="tel" class="phone-number" placeholder="📞 הזן מספר טלפון" required>
+            <input type="text" class="phone-name" placeholder="🙍‍♂️ שם איש קשר" required>
+            <button class="remove-phone">−</button>
+          `;
+          phoneList.appendChild(phoneEntry);
+          
+          phoneEntry.querySelector('.remove-phone').addEventListener('click', () => {
+            if (phoneList.children.length > 1) {
+              phoneEntry.remove();
+            }
+          });
+        }
+        
+        // Обрабатываем работу в команде
+        const teamWork = document.getElementById('team-work');
+        const targetName2Container = document.getElementById('target-name-2-container');
+        const targetName2 = document.getElementById('target-name-2');
+        
+        if (taskData.teamColor) {
+          teamWork.checked = true;
+          targetName2Container.style.display = 'block';
+          // Найдем второго участника команды
+          const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
+          for (let otherRowIndex = 0; otherRowIndex < names.length; otherRowIndex++) {
+            if (otherRowIndex !== rowIndex) {
+              const otherKey = `notes/${dateRange}_${weekNumber}/${otherRowIndex}/${colIndex}/${taskNumber}`;
+              get(ref(db, otherKey)).then(snapshot => {
+                const otherData = snapshot.val();
+                if (otherData && otherData.teamColor === taskData.teamColor) {
+                  targetName2.value = otherData.name || '';
+                }
+              });
+            }
+          }
+        } else {
+          teamWork.checked = false;
+          targetName2Container.style.display = 'none';
+        }
+        
+        // Сохраняем данные для использования при сохранении
+        document.getElementById('single-panel').dataset.dbKey = dbKey;
+        document.getElementById('single-panel').dataset.rowIndex = rowIndex;
+        document.getElementById('single-panel').dataset.colIndex = colIndex;
+        document.getElementById('single-panel').dataset.taskNumber = taskNumber;
+        document.getElementById('single-panel').dataset.isEditing = 'true';
+        
+        // Показываем уведомление
+        showNotification('המשימה נטענה לעריכה. שנה את הנתונים ולחץ על "שמור משימה"');
+      }
+
+      function showNotification(message) {
+        // Создаем уведомление
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.textContent = message;
+        notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background-color: #83a737;
+          color: white;
+          padding: 12px 20px;
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: bold;
+          z-index: 10000;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+          animation: slideIn 0.3s ease;
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Удаляем уведомление через 3 секунды
+        setTimeout(() => {
+          notification.style.animation = 'slideOut 0.3s ease';
+          setTimeout(() => {
+            if (notification.parentNode) {
+              notification.parentNode.removeChild(notification);
+            }
+          }, 300);
+        }, 3000);
+      }
+
+      function showTaskFullScreen(taskText) {
+        if (!taskText.trim()) {
+          return; // Не показываем пустой экран
+        }
+
+        // Создаем полноэкранное окно
+        const fullScreenOverlay = document.createElement('div');
+        fullScreenOverlay.id = 'task-fullscreen-overlay';
+        fullScreenOverlay.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(0, 0, 0, 0.9);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 10000;
+          direction: rtl;
+        `;
+
+        const fullScreenContent = document.createElement('div');
+        fullScreenContent.id = 'task-fullscreen-content';
+        fullScreenContent.style.cssText = `
+          background-color: white;
+          border-radius: 12px;
+          padding: 30px;
+          max-width: 90%;
+          max-height: 90%;
+          overflow-y: auto;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+          position: relative;
+        `;
+
+        // Разбиваем текст на строки и форматируем
+        const lines = taskText.split(/[\r\n]+/);
+        const formattedContent = lines
+          .map((line) => {
+            if (line.match(/טלפון \d+:/)) {
+              const phoneMatch = line.match(/טלפון \d+: ([^,]+), שם: (.*)/);
+              if (phoneMatch) {
+                const phoneNumber = phoneMatch[1].trim();
+                return `<div class="task-line phone-line">
+                  <span>${line}</span>
+                  <a href="tel:${phoneNumber}" class="call-phone-btn">📞</a>
+                </div>`;
+              }
+            }
+            return `<div class="task-line">${line.trim()}</div>`;
+          })
+          .join("");
+
+        fullScreenContent.innerHTML = `
+          <div class="task-fullscreen-header">
+            <h2>פרטי המשימה</h2>
+            <button class="close-fullscreen-btn" onclick="closeTaskFullScreen()">✕</button>
+          </div>
+          <div class="task-fullscreen-body">
+            ${formattedContent}
+          </div>
+        `;
+
+        fullScreenOverlay.appendChild(fullScreenContent);
+        document.body.appendChild(fullScreenOverlay);
+
+        // Добавляем обработчик для закрытия по клику вне контента
+        fullScreenOverlay.addEventListener('click', (e) => {
+          if (e.target === fullScreenOverlay) {
+            closeTaskFullScreen();
+          }
+        });
+
+        // Добавляем обработчик для закрытия по клавише Escape
+        document.addEventListener('keydown', function closeOnEscape(e) {
+          if (e.key === 'Escape') {
+            closeTaskFullScreen();
+            document.removeEventListener('keydown', closeOnEscape);
+          }
+        });
+      }
+
+      function closeTaskFullScreen() {
+        const overlay = document.getElementById('task-fullscreen-overlay');
+        if (overlay) {
+          overlay.remove();
+        }
+      }
+
+      // Делаем функцию глобальной
+      window.closeTaskFullScreen = closeTaskFullScreen;
     </script>
     <script>
       function toggleFaq() {
@@ -830,6 +1091,14 @@
         const answer = element.querySelector(".faq-answer");
         answer.style.display =
           answer.style.display === "block" ? "none" : "block";
+      }
+
+      // Глобальная функция для закрытия полноэкранного режима
+      function closeTaskFullScreen() {
+        const overlay = document.getElementById('task-fullscreen-overlay');
+        if (overlay) {
+          overlay.remove();
+        }
       }
     </script>
   </head>
@@ -1460,10 +1729,17 @@
     
     /* Мобильные стили для мобильной строки заметок */
     .mobile-notes-textarea {
-      min-height: 50px;
-      font-size: 0.8em;
-      padding: 6px;
-      padding-right: 35px;
+      width: 100%;
+      min-height: 60px;
+      padding: 8px;
+      padding-right: 40px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.9em;
+      font-family: inherit;
+      resize: vertical;
+      background-color: #fff;
+      box-sizing: border-box;
     }
     
     .mobile-notes-cell {
@@ -1471,11 +1747,25 @@
     }
     
     .mobile-notes-save-btn {
-      width: 20px;
-      height: 20px;
-      top: 6px;
-      right: 6px;
-      font-size: 10px;
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 4px;
+      background-color: #83a737;
+      color: white;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s ease;
+    }
+    
+    .mobile-notes-save-btn:hover {
+      background-color: #6b8a2a;
     }
   }
 
@@ -1694,5 +1984,237 @@
   
   .mobile-notes-save-btn:hover {
     background-color: #6b8a2a;
+  }
+
+  /* Стили для модального окна редактирования */
+  #edit-task-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+  }
+
+  #edit-task-modal-content {
+    background-color: white;
+    border-radius: 12px;
+    padding: 20px;
+    max-width: 90%;
+    max-height: 90%;
+    overflow-y: auto;
+    direction: rtl;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  #edit-task-modal-content h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333;
+    font-size: 1.5em;
+  }
+
+  #edit-single-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  #edit-single-panel label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-weight: bold;
+    color: #333;
+  }
+
+  #edit-single-panel input,
+  #edit-single-panel select,
+  #edit-single-panel textarea {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+
+  #edit-single-panel input:focus,
+  #edit-single-panel select:focus,
+  #edit-single-panel textarea:focus {
+    outline: none;
+    border-color: #83a737;
+    box-shadow: 0 0 0 2px rgba(131, 167, 55, 0.2);
+  }
+
+  .edit-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+  }
+
+  .edit-buttons button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  #edit-save-task {
+    background-color: #83a737;
+    color: white;
+  }
+
+  #edit-save-task:hover {
+    background-color: #6b8a2a;
+  }
+
+  #edit-delete-task {
+    background-color: #dc3545;
+    color: white;
+  }
+
+  #edit-delete-task:hover {
+    background-color: #c82333;
+  }
+
+  #edit-cancel {
+    background-color: #6c757d;
+    color: white;
+  }
+
+  #edit-cancel:hover {
+    background-color: #5a6268;
+  }
+
+  /* Адаптивность для мобильных устройств */
+  @media (max-width: 600px) {
+    #edit-task-modal-content {
+      max-width: 95%;
+      max-height: 95%;
+      padding: 15px;
+    }
+
+    .edit-buttons {
+      flex-direction: column;
+    }
+
+    .edit-buttons button {
+      width: 100%;
+    }
+  }
+
+  /* Анимации для уведомлений */
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideOut {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+  }
+
+  /* Стили для полноэкранного отображения задач */
+  .task-fullscreen-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #83a737;
+  }
+
+  .task-fullscreen-header h2 {
+    margin: 0;
+    color: #333;
+    font-size: 1.8em;
+  }
+
+  .close-fullscreen-btn {
+    background: #fc9247;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+  }
+
+  .close-fullscreen-btn:hover {
+    background: #e67e22;
+  }
+
+  .task-fullscreen-body {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  .task-line {
+    margin-bottom: 12px;
+    padding: 8px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    border-right: 4px solid #83a737;
+  }
+
+  .phone-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .call-phone-btn {
+    color: #28a745;
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    transition: color 0.2s ease;
+  }
+
+  .call-phone-btn:hover {
+    color: #218838;
+  }
+
+  /* Адаптивность для мобильных устройств */
+  @media (max-width: 600px) {
+    #task-fullscreen-content {
+      max-width: 95%;
+      max-height: 95%;
+      padding: 20px;
+    }
+
+    .task-fullscreen-header h2 {
+      font-size: 1.5em;
+    }
+
+    .task-line {
+      font-size: 14px;
+    }
   }
 </style>
