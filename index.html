@@ -476,6 +476,96 @@
         }
       }
 
+      function updateDayNotesDisplay() {
+        const isMobile = window.matchMedia("(max-width: 600px)").matches;
+        const selectedDay = parseInt(document.getElementById("day-select").value);
+        
+        // Удаляем существующую мобильную строку заметок
+        const existingMobileRow = document.querySelector('.mobile-notes-row');
+        if (existingMobileRow) {
+          existingMobileRow.remove();
+        }
+        
+        if (isMobile) {
+          // Создаем отдельную строку для мобильных заметок
+          const tbody = document.querySelector('#schedule-table tbody');
+          const mobileNotesRow = document.createElement('tr');
+          mobileNotesRow.className = 'mobile-notes-row';
+          
+          // Создаем ячейку, которая объединяет две колонки
+          const mobileNotesCell = document.createElement('td');
+          mobileNotesCell.colSpan = 2;
+          mobileNotesCell.className = 'mobile-notes-cell';
+          
+          const notesContainer = document.createElement('div');
+          notesContainer.className = 'mobile-notes-container';
+          
+          const notesTextarea = document.createElement('textarea');
+          notesTextarea.className = 'mobile-notes-textarea';
+          notesTextarea.placeholder = `📝 הערות ליום ${dayNames[selectedDay]}...`;
+          notesTextarea.rows = 3;
+          notesTextarea.setAttribute('data-day', selectedDay);
+          
+          const saveButton = document.createElement('button');
+          saveButton.className = 'mobile-notes-save-btn';
+          saveButton.innerHTML = '💾';
+          saveButton.title = 'שמור הערות';
+          
+          // Сохраняем заметки для выбранного дня
+          const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
+          const notesKey = `notes/${dateRange}_${weekNumber}/dayNotes/${selectedDay}`;
+          
+          // Загружаем существующие заметки
+          onValue(ref(db, notesKey), (snapshot) => {
+            const notes = snapshot.val();
+            if (notes) {
+              notesTextarea.value = notes;
+            } else {
+              notesTextarea.value = '';
+            }
+          });
+          
+          // Сохраняем заметки при нажатии кнопки
+          saveButton.addEventListener('click', async () => {
+            try {
+              await set(ref(db, notesKey), notesTextarea.value);
+              // Показываем краткое уведомление об успехе
+              saveButton.innerHTML = '✅';
+              setTimeout(() => {
+                saveButton.innerHTML = '💾';
+              }, 1000);
+            } catch (error) {
+              console.error('Error saving day notes:', error);
+              alert('שגיאה בשמירת ההערות');
+            }
+          });
+          
+          notesContainer.appendChild(notesTextarea);
+          notesContainer.appendChild(saveButton);
+          mobileNotesCell.appendChild(notesContainer);
+          mobileNotesRow.appendChild(mobileNotesCell);
+          tbody.appendChild(mobileNotesRow);
+          
+          // Скрываем обычные заметки на мобильных
+          document.querySelectorAll('.day-notes-cell').forEach(cell => {
+            cell.style.display = "none";
+          });
+          const headerCell = document.querySelector('.day-notes-header');
+          if (headerCell) {
+            headerCell.style.display = "none";
+          }
+        } else {
+          // На десктопе показываем обычные заметки
+          document.querySelectorAll('.day-notes-cell').forEach(cell => {
+            cell.style.display = "";
+          });
+          const headerCell = document.querySelector('.day-notes-header');
+          if (headerCell) {
+            headerCell.style.display = "";
+          }
+        }
+      }
+
       document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll(".cell").forEach((cell, i) => {
           const rowIndex = Math.floor(i / 5);
@@ -658,6 +748,7 @@
             updateTableDates();
             reloadTasksForWeek();
             createDayNotesRow();
+            updateDayNotesDisplay();
           }
         });
         document.getElementById('prev-week').addEventListener('click', () => {
@@ -667,6 +758,7 @@
             updateTableDates();
             reloadTasksForWeek();
             createDayNotesRow();
+            updateDayNotesDisplay();
           }
         });
 
@@ -678,10 +770,13 @@
         }
 
         daySelect.addEventListener("change", updateTableDisplay);
+        daySelect.addEventListener("change", updateDayNotesDisplay);
         window.addEventListener("resize", () => {
           updateTableDisplay();
+          updateDayNotesDisplay();
         });
         updateTableDisplay();
+        updateDayNotesDisplay();
 
         document
           .getElementById("task-overlay")
@@ -721,6 +816,7 @@
         updateTableDates();
         reloadTasksForWeek();
         createDayNotesRow();
+        updateDayNotesDisplay();
       });
     </script>
     <script>
@@ -1356,6 +1452,31 @@
       right: 6px;
       font-size: 10px;
     }
+    
+    /* На мобильных скрываем заголовок заметок */
+    .day-notes-header {
+      display: none !important;
+    }
+    
+    /* Мобильные стили для мобильной строки заметок */
+    .mobile-notes-textarea {
+      min-height: 50px;
+      font-size: 0.8em;
+      padding: 6px;
+      padding-right: 35px;
+    }
+    
+    .mobile-notes-cell {
+      padding: 4px !important;
+    }
+    
+    .mobile-notes-save-btn {
+      width: 20px;
+      height: 20px;
+      top: 6px;
+      right: 6px;
+      font-size: 10px;
+    }
   }
 
   @media (min-width: 601px) {
@@ -1516,5 +1637,62 @@
   
   .day-notes-save-btn:active {
     transform: scale(0.95);
+  }
+
+  /* Стили для мобильной строки заметок */
+  .mobile-notes-row {
+    background-color: #f8f9fa;
+  }
+  
+  .mobile-notes-cell {
+    padding: 8px !important;
+    vertical-align: top;
+  }
+  
+  .mobile-notes-container {
+    width: 100%;
+    position: relative;
+  }
+  
+  .mobile-notes-textarea {
+    width: 100%;
+    min-height: 60px;
+    padding: 8px;
+    padding-right: 40px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: inherit;
+    resize: vertical;
+    background-color: #fff;
+    box-sizing: border-box;
+  }
+  
+  .mobile-notes-textarea:focus {
+    outline: none;
+    border-color: #83a737;
+    box-shadow: 0 0 0 2px rgba(131, 167, 55, 0.2);
+  }
+  
+  .mobile-notes-save-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 4px;
+    background-color: #83a737;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+  }
+  
+  .mobile-notes-save-btn:hover {
+    background-color: #6b8a2a;
   }
 </style>
