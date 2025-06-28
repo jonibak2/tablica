@@ -62,6 +62,7 @@
           // Изменяем ключ базы данных для привязки к конкретной неделе
           const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
           const dbKey = `notes/${dateRange}_${weekNumber}/${rowIndex}/${colIndex}/${i + 1}`;
+          console.log('Creating checkbox with weekOffset:', weekOffset, 'dateRange:', dateRange, 'dbKey:', dbKey);
 
           const tooltip = document.createElement("div");
           tooltip.className = "tooltip";
@@ -652,6 +653,7 @@
             
             try {
               const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
+              console.log('Saving task with weekOffset:', weekOffset, 'dateRange:', dateRange, 'weekNumber:', weekNumber);
               const isEditing = document.getElementById('single-panel').dataset.isEditing === 'true';
               
               if (isEditing) {
