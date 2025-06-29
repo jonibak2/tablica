@@ -61,9 +61,9 @@
 
           // Изменяем ключ базы данных для привязки к конкретной неделе
           const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
-          const dbKey = `notes/${dateRange}_${weekNumber}/${rowIndex}/${colIndex}/${i + 1}`;
-          console.log('Creating checkbox with weekOffset:', weekOffset, 'dateRange:', dateRange, 'dbKey:', dbKey);
-
+          const dbKey = `notes/${dateRange}/${rowIndex}/${colIndex}/${i + 1}`;
+          
+          // Загружаем данные из базы
           const tooltip = document.createElement("div");
           tooltip.className = "tooltip";
 
@@ -105,18 +105,18 @@
                   otherRowIndex++
                 ) {
                   if (otherRowIndex !== rowIndex) {
-                    const otherKey = `notes/${dateRange}_${weekNumber}/${otherRowIndex}/${colIndex}/${
+                    const otherKey = `notes/${dateRange}/${otherRowIndex}/${colIndex}/${
                       i + 1
                     }`;
                     const otherSnapshot = await get(ref(db, otherKey));
                     const otherData = otherSnapshot.val();
                     if (
-                      otherData?.note === data.note &&
+                      otherData?.address === data.address &&
                       otherData?.teamColor === teamColor
                     ) {
                       await set(ref(db, otherKey), {
+                        ...otherData,
                         checked: checkbox.checked,
-                        note: data.note,
                         teamColor: teamColor,
                       });
                     }
@@ -124,8 +124,8 @@
                 }
               }
               await set(ref(db, dbKey), {
+                ...data,
                 checked: checkbox.checked,
-                note: data.note,
                 teamColor: teamColor,
               });
             } catch (error) {
@@ -382,7 +382,7 @@
           
           // Сохраняем заметки для каждого дня недели
           const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
-          const notesKey = `notes/${dateRange}_${weekNumber}/dayNotes/${dayIndex}`;
+          const notesKey = `notes/${dateRange}/dayNotes/${dayIndex}`;
           
           // Загружаем существующие заметки
           onValue(ref(db, notesKey), (snapshot) => {
@@ -422,7 +422,7 @@
         const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
         
         for (let dayIndex = 0; dayIndex < 5; dayIndex++) {
-          const notesKey = `notes/${dateRange}_${weekNumber}/dayNotes/${dayIndex}`;
+          const notesKey = `notes/${dateRange}/dayNotes/${dayIndex}`;
           const snapshot = await get(ref(db, notesKey));
           const notes = snapshot.val();
           
@@ -470,7 +470,7 @@
           
           // Сохраняем заметки для выбранного дня
           const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
-          const notesKey = `notes/${dateRange}_${weekNumber}/dayNotes/${selectedDay}`;
+          const notesKey = `notes/${dateRange}/dayNotes/${selectedDay}`;
           
           // Загружаем существующие заметки
           onValue(ref(db, notesKey), (snapshot) => {
@@ -557,7 +557,7 @@
           isAdmin.status = false;
           document.getElementById("single-panel").style.display = "none";
           document.getElementById("admin-button").style.display = "block";
-          alert("יצאת ממצב ניהול");
+          alert("יצאת ממצב מנהל");
         });
 
         document.getElementById("team-work").addEventListener("change", () => {
@@ -653,8 +653,8 @@
             
             try {
               const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
-              console.log('Saving task with weekOffset:', weekOffset, 'dateRange:', dateRange, 'weekNumber:', weekNumber);
               const isEditing = document.getElementById('single-panel').dataset.isEditing === 'true';
+              console.log('Saving task with weekOffset:', weekOffset, 'dateRange:', dateRange, 'weekNumber:', weekNumber);
               
               if (isEditing) {
                 // Редактируем существующую задачу
@@ -671,7 +671,7 @@
                 if (originalData && originalData.teamColor) {
                   for (let otherRowIndex = 0; otherRowIndex < names.length; otherRowIndex++) {
                     if (otherRowIndex !== originalRowIndex) {
-                      const otherKey = `notes/${dateRange}_${weekNumber}/${otherRowIndex}/${originalColIndex}/${originalTaskNumber}`;
+                      const otherKey = `notes/${dateRange}/${otherRowIndex}/${originalColIndex}/${originalTaskNumber}`;
                       const otherSnapshot = await get(ref(db, otherKey));
                       const otherData = otherSnapshot.val();
                       if (otherData && otherData.teamColor === originalData.teamColor) {
@@ -699,7 +699,7 @@
                 if (isTeamWork) {
                   const rowIndex2 = names.indexOf(targetName2);
                   if (rowIndex2 !== -1) {
-                    const dbKey2 = `notes/${dateRange}_${weekNumber}/${rowIndex2}/${targetDay}/${targetNumber}`;
+                    const dbKey2 = `notes/${dateRange}/${rowIndex2}/${targetDay}/${targetNumber}`;
                     await set(ref(db, dbKey2), {
                       checked: false,
                       name: targetName2,
@@ -725,7 +725,7 @@
                 showNotification('המשימה עודכנה בהצלחה');
               } else {
                 // Создаем новую задачу
-                const dbKey = `notes/${dateRange}_${weekNumber}/${rowIndex1}/${targetDay}/${targetNumber}`;
+                const dbKey = `notes/${dateRange}/${rowIndex1}/${targetDay}/${targetNumber}`;
                 
                 await set(ref(db, dbKey), {
                   checked: false,
@@ -744,7 +744,7 @@
                   const rowIndex2 = names.indexOf(targetName2);
                   if (rowIndex2 === -1)
                     return alert("נתונים לא תקינים עבור האדם השני");
-                  const dbKey2 = `notes/${dateRange}_${weekNumber}/${rowIndex2}/${targetDay}/${targetNumber}`;
+                  const dbKey2 = `notes/${dateRange}/${rowIndex2}/${targetDay}/${targetNumber}`;
                   await set(ref(db, dbKey2), {
                     checked: false,
                     name: targetName2,
@@ -932,7 +932,7 @@
           const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
           for (let otherRowIndex = 0; otherRowIndex < names.length; otherRowIndex++) {
             if (otherRowIndex !== rowIndex) {
-              const otherKey = `notes/${dateRange}_${weekNumber}/${otherRowIndex}/${colIndex}/${taskNumber}`;
+              const otherKey = `notes/${dateRange}/${otherRowIndex}/${colIndex}/${taskNumber}`;
               get(ref(db, otherKey)).then(snapshot => {
                 const otherData = snapshot.val();
                 if (otherData && otherData.teamColor === taskData.teamColor) {
