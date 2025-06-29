@@ -57,7 +57,7 @@
 
           const checkbox = document.createElement("input");
           checkbox.type = "checkbox";
-          checkbox.disabled = !isMobile; // <-- Блокировка на десктопе
+          checkbox.disabled = !isMobile; // Только на мобильных разрешено
 
           // Изменяем ключ базы данных для привязки к конкретной неделе
           const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
