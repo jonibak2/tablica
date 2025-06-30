@@ -13,6 +13,7 @@
         set,
         onValue,
         get,
+        off,
       } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
       const firebaseConfig = {
@@ -35,15 +36,20 @@
       const taskNumbers = [1, 2, 3, 4, 5, 6, 7];
       let isMobile = window.matchMedia("(max-width: 600px)").matches;
 
+      // Автоматически устанавливаем админа для ПК
+      isAdmin.status = !isMobile;
+
       let weekOffset = 0;
       const MIN_WEEK_OFFSET = -100;
       const MAX_WEEK_OFFSET = 100;
+
+      // Для хранения callback-ов подписок
+      const checkboxListeners = {};
 
       function createCheckboxCell(cell, rowIndex, colIndex) {
         const container = document.createElement("div");
         container.className = "checkboxes";
 
-        // Делегирование долгого нажатия на всю .checkboxes
         let longPressTimer = null;
         let longPressTarget = null;
 
@@ -51,7 +57,6 @@
           const label = document.createElement("label");
           label.className = "no-task";
 
-          // Контейнер для текста (адрес/номер)
           const textDiv = document.createElement("div");
           textDiv.className = "task-label-text";
 
@@ -59,13 +64,56 @@
           checkbox.type = "checkbox";
           checkbox.disabled = !isMobile;
 
-          // Изменяем ключ базы данных для привязки к конкретной неделе
           const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
           const dbKey = `notes/${dateRange}/${rowIndex}/${colIndex}/${i + 1}`;
-          
-          // Загружаем данные из базы
-          const tooltip = document.createElement("div");
-          tooltip.className = "tooltip";
+
+          // --- Снимаем старую подписку, если есть ---
+          if (checkboxListeners[dbKey]) {
+            off(ref(db, dbKey), checkboxListeners[dbKey]);
+          }
+
+          // --- Новый callback для onValue ---
+          const onValueCallback = (snapshot) => {
+            const data = snapshot.val();
+            label.innerHTML = '';
+            if (!data) {
+              label.style.background = '#fff';
+              label.style.color = '#000';
+              return;
+            }
+            checkbox.checked = data?.checked || false;
+            const phoneText = data.phones ? data.phones.map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`).join("\n") : "";
+            const tooltip = document.createElement("div");
+            tooltip.className = "tooltip";
+            tooltip.innerText = `כתובת: ${data.address || ""}\nקוד כניסה: ${data.code || ""}\n${phoneText}\nמשימה: ${data.reason || ""}\nהערות: ${data.comments || ""}`;
+            if (data.address && data.address.trim()) {
+              textDiv.innerHTML = `<div>${data.address}</div><div style='font-size:0.9em;color:#888;'>${taskNum}</div>`;
+            } else {
+              textDiv.innerHTML = `<div>${taskNum}</div>`;
+            }
+            if (data?.checked) {
+              label.style.background = '#d4f7d4';
+              label.style.color = '#008000';
+            } else if (data?.teamColor) {
+              label.style.background = '#e0f7fa';
+              label.style.color = '#00ced1';
+            } else {
+              label.style.background = '#fff';
+              label.style.color = '#000';
+            }
+            label.appendChild(textDiv);
+            label.appendChild(checkbox);
+            label.appendChild(tooltip);
+            label.onclick = (e) => {
+              if (isAdmin.status && e.target !== checkbox) {
+                fillAdminPanelWithTaskData(data, dbKey, rowIndex, colIndex, i + 1);
+              }
+            };
+          };
+
+          // --- Сохраняем и подписываемся ---
+          checkboxListeners[dbKey] = onValueCallback;
+          onValue(ref(db, dbKey), onValueCallback);
 
           // Добавляем обработчики долгого нажатия для каждой метки
           label.addEventListener('mousedown', (e) => {
@@ -108,49 +156,6 @@
           label.addEventListener('touchend', () => { clearTimeout(longPressTimer); });
           label.addEventListener('touchcancel', () => { clearTimeout(longPressTimer); });
 
-          onValue(ref(db, dbKey), (snapshot) => {
-            const data = snapshot.val();
-            // Очищаем label
-            label.innerHTML = '';
-            if (!data) {
-              // Нет задачи — ничего не показываем
-              label.style.background = '#fff';
-              label.style.color = '#000';
-              return;
-            }
-            checkbox.checked = data?.checked || false;
-            // Формируем текст для tooltip из отдельных полей
-            const phoneText = data.phones ? data.phones.map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`).join("\n") : "";
-            tooltip.innerText = `כתובת: ${data.address || ""}\nקוד כניסה: ${data.code || ""}\n${phoneText}\nמשימה: ${data.reason || ""}\nהערות: ${data.comments || ""}`;
-            // Если есть адрес, показываем его первой строкой, а номер задачи — второй
-            if (data.address && data.address.trim()) {
-              textDiv.innerHTML = `<div>${data.address}</div><div style='font-size:0.9em;color:#888;'>${taskNum}</div>`;
-            } else {
-              textDiv.innerHTML = `<div>${taskNum}</div>`;
-            }
-            // Цвета
-            if (data?.checked) {
-              label.style.background = '#d4f7d4'; // зелёный
-              label.style.color = '#008000';
-            } else if (data?.teamColor) {
-              label.style.background = '#e0f7fa'; // голубой
-              label.style.color = '#00ced1';
-            } else {
-              label.style.background = '#fff'; // белый
-              label.style.color = '#000';
-            }
-            // Добавляем текст, чекбокс и tooltip
-            label.appendChild(textDiv);
-            label.appendChild(checkbox);
-            label.appendChild(tooltip);
-
-            // Включаем редактирование по клику на текст задачи (в админ-режиме)
-            label.onclick = (e) => {
-              if (isAdmin.status && e.target !== checkbox) {
-                fillAdminPanelWithTaskData(data, dbKey, rowIndex, colIndex, i + 1);
-              }
-            };
-          });
           container.appendChild(label);
         });
 
@@ -447,33 +452,8 @@
 
         resetAdminPanelCheckboxes();
 
-        document
-          .getElementById("admin-button")
-          .addEventListener("click", () => {
-            document.getElementById("admin-panel").style.display = "block";
-          });
-
-        document
-          .getElementById("admin-confirm")
-          .addEventListener("click", () => {
-            const code = document.getElementById("admin-code").value;
-            if (code === "1111") {
-              isAdmin.status = true;
-              alert("הכניסה בוצעה בהצלחה!");
-              document.getElementById("admin-panel").style.display = "none";
-              document.getElementById("single-panel").style.display = "block";
-              document.getElementById("admin-button").style.display = "none";
-            } else {
-              alert("קוד שגוי!");
-            }
-          });
-
-        document.getElementById("admin-exit").addEventListener("click", () => {
-          isAdmin.status = false;
-          document.getElementById("single-panel").style.display = "none";
-          document.getElementById("admin-button").style.display = "block";
-          alert("יצאת ממצב מנהל");
-        });
+        // Показываем/скрываем панель редактирования в зависимости от типа устройства
+        document.getElementById("single-panel").style.display = !isMobile ? "block" : "none";
 
         document.getElementById("team-work").addEventListener("change", () => {
           document.getElementById("target-name-2-container").style.display =
@@ -714,6 +694,8 @@
         daySelect.addEventListener("change", updateDayNotesDisplay);
         window.addEventListener("resize", () => {
           isMobile = window.matchMedia("(max-width: 600px)").matches;
+          isAdmin.status = !isMobile;
+          document.getElementById("single-panel").style.display = !isMobile ? "block" : "none";
           updateTableDisplay();
           updateDayNotesDisplay();
         });
@@ -1192,11 +1174,6 @@
       </tbody>
     </table>
 
-    <button id="admin-button">🔒 כניסת מנהל</button>
-    <div id="admin-panel">
-      <label>קוד גישה: <input type="password" id="admin-code" /></label>
-      <button id="admin-confirm">אישור</button>
-    </div>
     <div id="single-panel">
       <label
         >שם:<span class="required">*</span>
@@ -1308,7 +1285,6 @@
       </label>
       <button id="single-insert">💾 שמור משימה</button>
       <button id="clear-all-fields">🗑️ נקה את כל השדות</button>
-      <button id="admin-exit">יציאה ממצב מנהל</button>
     </div>
 
     <div id="task-overlay">
