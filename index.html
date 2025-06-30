@@ -132,6 +132,65 @@
           });
 
           container.appendChild(label);
+
+          // --- Обработчики для открытия задачи на полный экран ---
+          let longPressTimer = null;
+          let longPressTarget = null;
+
+          // Для ПК: долгое нажатие (мышь)
+          label.addEventListener('mousedown', (e) => {
+            if (e.target.type === 'checkbox') return;
+            longPressTarget = label;
+            longPressTimer = setTimeout(() => {
+              if (label.querySelector('.tooltip')?.innerText) {
+                showTaskFullScreen(label.querySelector('.tooltip').innerText, {
+                  dateRange,
+                  rowIndex,
+                  colIndex,
+                  taskNumber: i + 1,
+                  isTeamWork: false,
+                  teamColor: null
+                });
+              }
+            }, 500);
+          });
+          label.addEventListener('mouseup', () => { clearTimeout(longPressTimer); });
+          label.addEventListener('mouseleave', () => { clearTimeout(longPressTimer); });
+
+          // Для телефона: долгое нажатие (touch)
+          label.addEventListener('touchstart', (e) => {
+            if (e.target.type === 'checkbox') return;
+            longPressTarget = label;
+            longPressTimer = setTimeout(() => {
+              if (label.querySelector('.tooltip')?.innerText) {
+                showTaskFullScreen(label.querySelector('.tooltip').innerText, {
+                  dateRange,
+                  rowIndex,
+                  colIndex,
+                  taskNumber: i + 1,
+                  isTeamWork: false,
+                  teamColor: null
+                });
+              }
+            }, 500);
+          });
+          label.addEventListener('touchend', () => { clearTimeout(longPressTimer); });
+          label.addEventListener('touchcancel', () => { clearTimeout(longPressTimer); });
+
+          // Альтернатива: двойной клик (ПК)
+          label.addEventListener('dblclick', (e) => {
+            if (e.target.type === 'checkbox') return;
+            if (label.querySelector('.tooltip')?.innerText) {
+              showTaskFullScreen(label.querySelector('.tooltip').innerText, {
+                dateRange,
+                rowIndex,
+                colIndex,
+                taskNumber: i + 1,
+                isTeamWork: false,
+                teamColor: null
+              });
+            }
+          });
         });
         cell.appendChild(container);
       }
