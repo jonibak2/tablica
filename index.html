@@ -50,9 +50,6 @@
         const container = document.createElement("div");
         container.className = "checkboxes";
 
-        let longPressTimer = null;
-        let longPressTarget = null;
-
         taskNumbers.forEach((taskNum, i) => {
           const label = document.createElement("label");
           label.className = "no-task";
@@ -64,15 +61,15 @@
           checkbox.type = "checkbox";
           checkbox.disabled = !isMobile;
 
-          const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
+          const { dateRange } = getWeekDateRange(weekOffset);
           const dbKey = `notes/${dateRange}/${rowIndex}/${colIndex}/${i + 1}`;
 
-          // --- Снимаем старую подписку, если есть ---
+          // Снимаем старую подписку, если есть
           if (checkboxListeners[dbKey]) {
             off(ref(db, dbKey), checkboxListeners[dbKey]);
           }
 
-          // --- Новый callback для onValue ---
+          // Подписка на обновления задачи
           const onValueCallback = (snapshot) => {
             const data = snapshot.val();
             label.innerHTML = '';
@@ -81,7 +78,7 @@
               label.style.color = '#000';
               return;
             }
-            checkbox.checked = data?.checked || false;
+            checkbox.checked = data.checked || false;
             const phoneText = data.phones ? data.phones.map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`).join("\n") : "";
             const tooltip = document.createElement("div");
             tooltip.className = "tooltip";
@@ -91,10 +88,10 @@
             } else {
               textDiv.innerHTML = `<div>${taskNum}</div>`;
             }
-            if (data?.checked) {
+            if (data.checked) {
               label.style.background = '#d4f7d4';
               label.style.color = '#008000';
-            } else if (data?.teamColor) {
+            } else if (data.teamColor) {
               label.style.background = '#e0f7fa';
               label.style.color = '#00ced1';
             } else {
@@ -110,55 +107,32 @@
               }
             };
           };
-
-          // --- Сохраняем и подписываемся ---
           checkboxListeners[dbKey] = onValueCallback;
           onValue(ref(db, dbKey), onValueCallback);
 
-          // Добавляем обработчики долгого нажатия для каждой метки
-          label.addEventListener('mousedown', (e) => {
-            if (e.target.type === 'checkbox') return;
-            longPressTarget = label;
-            longPressTimer = setTimeout(() => {
-              if (tooltip.innerText) {
-                showTaskFullScreen(tooltip.innerText, {
-                  dateRange,
-                  rowIndex,
-                  colIndex,
-                  taskNumber: i + 1,
-                  isTeamWork: false,
-                  teamColor: null
-                });
+          // Обработчик изменения чекбокса
+          checkbox.addEventListener('change', async () => {
+            const snapshot = await get(ref(db, dbKey));
+            const data = snapshot.val() || {};
+            await set(ref(db, dbKey), { ...data, checked: checkbox.checked });
+
+            // Если это командная задача — обновить и вторую
+            if (data.teamColor) {
+              for (let otherColIndex = 0; otherColIndex < names.length; otherColIndex++) {
+                if (otherColIndex !== colIndex) {
+                  const otherKey = `notes/${dateRange}/${rowIndex}/${otherColIndex}/${i + 1}`;
+                  const otherSnap = await get(ref(db, otherKey));
+                  const otherData = otherSnap.val();
+                  if (otherData && otherData.teamColor === data.teamColor) {
+                    await set(ref(db, otherKey), { ...otherData, checked: checkbox.checked });
+                  }
+                }
               }
-            }, 500);
+            }
           });
-
-          label.addEventListener('mouseup', () => { clearTimeout(longPressTimer); });
-          label.addEventListener('mouseleave', () => { clearTimeout(longPressTimer); });
-
-          label.addEventListener('touchstart', (e) => {
-            if (e.target.type === 'checkbox') return;
-            longPressTarget = label;
-            longPressTimer = setTimeout(() => {
-              if (tooltip.innerText) {
-                showTaskFullScreen(tooltip.innerText, {
-                  dateRange,
-                  rowIndex,
-                  colIndex,
-                  taskNumber: i + 1,
-                  isTeamWork: false,
-                  teamColor: null
-                });
-              }
-            }, 500);
-          });
-
-          label.addEventListener('touchend', () => { clearTimeout(longPressTimer); });
-          label.addEventListener('touchcancel', () => { clearTimeout(longPressTimer); });
 
           container.appendChild(label);
         });
-
         cell.appendChild(container);
       }
 
