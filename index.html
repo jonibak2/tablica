@@ -132,6 +132,12 @@
             label.appendChild(textDiv);
             label.appendChild(checkbox);
             label.appendChild(tooltip);
+            // Включаем редактирование по клику на текст задачи (в админ-режиме)
+            label.onclick = (e) => {
+              if (isAdmin.status && e.target !== checkbox) {
+                fillAdminPanelWithTaskData(data, dbKey, rowIndex, colIndex, i + 1);
+              }
+            };
           });
           container.appendChild(label);
         });
