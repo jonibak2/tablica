@@ -1181,6 +1181,14 @@
           <td class="cell"></td>
           <td class="day-notes-cell"></td>
         </tr>
+        <tr class="bottom-names-row">
+          <td></td>
+          <td>טימור</td>
+          <td>יעקב</td>
+          <td>אלי</td>
+          <td>טכנאי ביצוע</td>
+          <td></td>
+        </tr>
       </tbody>
     </table>
 
@@ -2308,6 +2316,26 @@
 
 
   .notification {
-    // ... existing code ...
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #83a737;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    animation: slideIn 0.3s ease;
+  }
+
+  .bottom-names-row td {
+    text-align: center;
+    font-weight: bold;
+    padding: 10px;
+    border-top: 2px solid #ccc;
+    background-color: #83a737;
+    color: white;
   }
 </style>
