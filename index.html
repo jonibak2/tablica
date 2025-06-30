@@ -33,6 +33,7 @@
       const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
       const teamColors = ["cyan"];
       const taskNumbers = [1, 2, 3, 4, 5, 6, 7];
+      let isMobile = window.matchMedia("(max-width: 600px)").matches;
 
       let weekOffset = 0;
       const MIN_WEEK_OFFSET = -100;
@@ -45,37 +46,6 @@
         // Делегирование долгого нажатия на всю .checkboxes
         let longPressTimer = null;
         let longPressTarget = null;
-        container.addEventListener('mousedown', (e) => {
-          const label = e.target.closest('label');
-          if (!label || e.target.type === 'checkbox') return;
-          longPressTarget = label;
-          longPressTimer = setTimeout(() => {
-            // tooltip всегда последний child label
-            const tooltip = label.querySelector('.tooltip');
-            if (tooltip) showTaskFullScreen(tooltip.innerText);
-          }, 500);
-        });
-        container.addEventListener('mouseup', () => { clearTimeout(longPressTimer); });
-        container.addEventListener('mouseleave', () => { clearTimeout(longPressTimer); });
-        container.addEventListener('touchstart', (e) => {
-          const label = e.target.closest('label');
-          if (!label || e.target.type === 'checkbox') return;
-          longPressTarget = label;
-          longPressTimer = setTimeout(() => {
-            const tooltip = label.querySelector('.tooltip');
-            if (tooltip) showTaskFullScreen(tooltip.innerText);
-          }, 500);
-        });
-        container.addEventListener('touchend', () => { clearTimeout(longPressTimer); });
-        container.addEventListener('touchcancel', () => { clearTimeout(longPressTimer); });
-
-        // Чекбоксы разрешены только на мобильных (userAgent + touch)
-        const isMobile =
-          /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i.test(
-            navigator.userAgent
-          ) ||
-          ("ontouchstart" in window &&
-            window.matchMedia("(max-width: 600px)").matches);
 
         taskNumbers.forEach((taskNum, i) => {
           const label = document.createElement("label");
@@ -87,7 +57,7 @@
 
           const checkbox = document.createElement("input");
           checkbox.type = "checkbox";
-          checkbox.disabled = !isMobile; // Только на мобильных разрешено
+          checkbox.disabled = !isMobile;
 
           // Изменяем ключ базы данных для привязки к конкретной неделе
           const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
@@ -96,6 +66,47 @@
           // Загружаем данные из базы
           const tooltip = document.createElement("div");
           tooltip.className = "tooltip";
+
+          // Добавляем обработчики долгого нажатия для каждой метки
+          label.addEventListener('mousedown', (e) => {
+            if (e.target.type === 'checkbox') return;
+            longPressTarget = label;
+            longPressTimer = setTimeout(() => {
+              if (tooltip.innerText) {
+                showTaskFullScreen(tooltip.innerText, {
+                  dateRange,
+                  rowIndex,
+                  colIndex,
+                  taskNumber: i + 1,
+                  isTeamWork: false,
+                  teamColor: null
+                });
+              }
+            }, 500);
+          });
+
+          label.addEventListener('mouseup', () => { clearTimeout(longPressTimer); });
+          label.addEventListener('mouseleave', () => { clearTimeout(longPressTimer); });
+
+          label.addEventListener('touchstart', (e) => {
+            if (e.target.type === 'checkbox') return;
+            longPressTarget = label;
+            longPressTimer = setTimeout(() => {
+              if (tooltip.innerText) {
+                showTaskFullScreen(tooltip.innerText, {
+                  dateRange,
+                  rowIndex,
+                  colIndex,
+                  taskNumber: i + 1,
+                  isTeamWork: false,
+                  teamColor: null
+                });
+              }
+            }, 500);
+          });
+
+          label.addEventListener('touchend', () => { clearTimeout(longPressTimer); });
+          label.addEventListener('touchcancel', () => { clearTimeout(longPressTimer); });
 
           onValue(ref(db, dbKey), (snapshot) => {
             const data = snapshot.val();
@@ -132,6 +143,7 @@
             label.appendChild(textDiv);
             label.appendChild(checkbox);
             label.appendChild(tooltip);
+
             // Включаем редактирование по клику на текст задачи (в админ-режиме)
             label.onclick = (e) => {
               if (isAdmin.status && e.target !== checkbox) {
@@ -270,8 +282,8 @@
         document.querySelectorAll('.cell').forEach(cell => cell.innerHTML = '');
         // Загружаем задачи из базы для этой недели
         document.querySelectorAll(".cell").forEach((cell, i) => {
-          const rowIndex = Math.floor(i / 5);
-          const colIndex = i % 5;
+          const rowIndex = Math.floor(i / 4);
+          const colIndex = i % 4;
           createCheckboxCell(cell, rowIndex, colIndex);
         });
         
@@ -428,8 +440,8 @@
 
       document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll(".cell").forEach((cell, i) => {
-          const rowIndex = Math.floor(i / 5);
-          const colIndex = i % 5;
+          const rowIndex = Math.floor(i / 4);
+          const colIndex = i % 4;
           createCheckboxCell(cell, rowIndex, colIndex);
         });
 
@@ -609,6 +621,8 @@
                       comments: comments,
                       teamColor: teamColor,
                     });
+                  } else {
+                    return alert("נתונים לא תקינים עבור האדם השני");
                   }
                 }
                 // Очищаем флаг редактирования
@@ -635,21 +649,23 @@
                 });
                 if (isTeamWork) {
                   const colIndex2 = names.indexOf(targetName2);
-                  if (colIndex2 === -1)
+                  if (colIndex2 !== -1) {
+                    const dbKey2 = `notes/${dateRange}/${rowIndex}/${colIndex2}/${targetNumber}`;
+                    await set(ref(db, dbKey2), {
+                      checked: false,
+                      name: targetName2,
+                      day: dayNames[rowIndex],
+                      taskNumber: parseInt(targetNumber),
+                      address: address,
+                      code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
+                      phones: phones,
+                      reason: reason,
+                      comments: comments,
+                      teamColor: teamColor,
+                    });
+                  } else {
                     return alert("נתונים לא תקינים עבור האדם השני");
-                  const dbKey2 = `notes/${dateRange}/${rowIndex}/${colIndex2}/${targetNumber}`;
-                  await set(ref(db, dbKey2), {
-                    checked: false,
-                    name: targetName2,
-                    day: dayNames[rowIndex],
-                    taskNumber: parseInt(targetNumber),
-                    address: address,
-                    code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
-                    phones: phones,
-                    reason: reason,
-                    comments: comments,
-                    teamColor: teamColor,
-                  });
+                  }
                 }
                 showNotification('משימה חדשה נשמרה בהצלחה');
               }
@@ -697,6 +713,7 @@
         daySelect.addEventListener("change", updateTableDisplay);
         daySelect.addEventListener("change", updateDayNotesDisplay);
         window.addEventListener("resize", () => {
+          isMobile = window.matchMedia("(max-width: 600px)").matches;
           updateTableDisplay();
           updateDayNotesDisplay();
         });
@@ -737,7 +754,7 @@
             });
         }
 
-        updateWeekDisplay();
+        updateWeekDisplay();  
         updateTableDates();
         reloadTasksForWeek();
         createDayNotesCells();
@@ -880,12 +897,54 @@
         }, 3000);
       }
 
-      function showTaskFullScreen(taskText) {
+      async function deleteTask(dateRange, rowIndex, colIndex, taskNumber, isTeamWork = false, teamColor = null) {
+        try {
+          console.log('Delete task params:', { dateRange, rowIndex, colIndex, taskNumber, isTeamWork, teamColor });
+          
+          if (!dateRange || rowIndex === undefined || colIndex === undefined || taskNumber === undefined) {
+            console.error('Missing required parameters for delete');
+            return;
+          }
+
+          if (!confirm('האם אתה בטוח שברצונך למחוק את המשימה?')) {
+            return;
+          }
+
+          // Удаляем основную задачу
+          const dbKey = `notes/${dateRange}/${rowIndex}/${colIndex}/${taskNumber}`;
+          console.log('Deleting task at:', dbKey);
+          await set(ref(db, dbKey), null);
+
+          // Если это командная работа, нужно найти и удалить задачу напарника
+          if (isTeamWork && teamColor) {
+            for (let otherColIndex = 0; otherColIndex < names.length; otherColIndex++) {
+              if (otherColIndex !== colIndex) {
+                const otherKey = `notes/${dateRange}/${rowIndex}/${otherColIndex}/${taskNumber}`;
+                const snapshot = await get(ref(db, otherKey));
+                const data = snapshot.val();
+                if (data && data.teamColor === teamColor) {
+                  console.log('Deleting team task at:', otherKey);
+                  await set(ref(db, otherKey), null);
+                }
+              }
+            }
+          }
+          
+          showNotification('המשימה נמחקה בהצלחה');
+          closeTaskFullScreen();
+          // Перезагружаем задачи для обновления отображения
+          reloadTasksForWeek();
+        } catch (error) {
+          console.error("Error deleting task:", error);
+          alert("שגיאה במחיקת המשימה");
+        }
+      }
+
+      function showTaskFullScreen(taskText, taskData = null) {
         if (!taskText.trim()) {
-          return; // Не показываем пустой экран
+          return;
         }
 
-        // Создаем полноэкранное окно
         const fullScreenOverlay = document.createElement('div');
         fullScreenOverlay.id = 'task-fullscreen-overlay';
         fullScreenOverlay.style.cssText = `
@@ -915,7 +974,6 @@
           position: relative;
         `;
 
-        // Разбиваем текст на строки и форматируем
         const lines = taskText.split(/[\r\n]+/);
         const formattedContent = lines
           .map((line) => {
@@ -933,11 +991,36 @@
           })
           .join("");
 
-        fullScreenContent.innerHTML = `
+        // Сохраняем данные задачи в переменной для использования в обработчике
+        const taskInfo = taskData ? {
+          dateRange: taskData.dateRange,
+          rowIndex: taskData.rowIndex,
+          colIndex: taskData.colIndex,
+          taskNumber: taskData.taskNumber,
+          isTeamWork: taskData.isTeamWork,
+          teamColor: taskData.teamColor || ''
+        } : null;
+
+        const deleteButtonHandler = taskInfo ? 
+          `onclick="deleteTask('${taskInfo.dateRange}', ${taskInfo.rowIndex}, ${taskInfo.colIndex}, ${taskInfo.taskNumber}, ${taskInfo.isTeamWork}, '${taskInfo.teamColor}')"` :
+          '';
+
+        const headerContent = `
           <div class="task-fullscreen-header">
             <h2>פרטי המשימה</h2>
-            <button class="close-fullscreen-btn" onclick="closeTaskFullScreen()">✕</button>
+            <div class="task-fullscreen-actions">
+              ${isAdmin.status && taskInfo ? `
+                <button class="delete-task-btn" ${deleteButtonHandler}>
+                  🗑️ מחק משימה
+                </button>
+              ` : ''}
+              <button class="close-fullscreen-btn" onclick="closeTaskFullScreen()">✕</button>
+            </div>
           </div>
+        `;
+
+        fullScreenContent.innerHTML = `
+          ${headerContent}
           <div class="task-fullscreen-body">
             ${formattedContent}
           </div>
@@ -946,14 +1029,12 @@
         fullScreenOverlay.appendChild(fullScreenContent);
         document.body.appendChild(fullScreenOverlay);
 
-        // Добавляем обработчик для закрытия по клику вне контента
         fullScreenOverlay.addEventListener('click', (e) => {
           if (e.target === fullScreenOverlay) {
             closeTaskFullScreen();
           }
         });
 
-        // Добавляем обработчик для закрытия по клавише Escape
         document.addEventListener('keydown', function closeOnEscape(e) {
           if (e.key === 'Escape') {
             closeTaskFullScreen();
@@ -962,15 +1043,9 @@
         });
       }
 
-      function closeTaskFullScreen() {
-        const overlay = document.getElementById('task-fullscreen-overlay');
-        if (overlay) {
-          overlay.remove();
-        }
-      }
-
-      // Делаем функцию глобальной
+      // Делаем функции глобальными
       window.closeTaskFullScreen = closeTaskFullScreen;
+      window.deleteTask = deleteTask;
     </script>
     <script>
       function toggleFaq() {
@@ -2145,5 +2220,41 @@
     direction: rtl;
     word-break: break-word;
     white-space: pre-line;
+  }
+
+  .task-fullscreen-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .delete-task-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background-color 0.2s ease;
+  }
+
+  .delete-task-btn:hover {
+    background: #c82333;
+  }
+
+  @media (max-width: 600px) {
+    .task-fullscreen-actions {
+      flex-direction: row;
+      gap: 8px;
+    }
+    
+    .delete-task-btn {
+      padding: 6px 12px;
+      font-size: 13px;
+    }
   }
 </style>
