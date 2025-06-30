@@ -1109,17 +1109,6 @@
       }
     </script>
     <script>
-      function toggleFaq() {
-        const popup = document.getElementById("faqPopup");
-        popup.style.display =
-          popup.style.display === "block" ? "none" : "block";
-      }
-
-      function toggleAnswer(element) {
-        const answer = element.querySelector(".faq-answer");
-        answer.style.display =
-          answer.style.display === "block" ? "none" : "block";
-      }
 
       // Глобальная функция для закрытия полноэкранного режима
       function closeTaskFullScreen() {
@@ -1328,54 +1317,6 @@
       <div id="back-confirm-content">
         <p>לחץ שוב על "חזור" כדי לצאת</p>
         <button id="back-cancel">ביטול</button>
-      </div>
-    </div>
-    <div class="faq-button" onclick="toggleFaq()">i</div>
-
-    <div class="faq-popup" id="faqPopup">
-      <div class="faq-item" onclick="toggleAnswer(this)">
-        <div class="faq-question">איך מסמנים משימות?</div>
-        <div class="faq-answer">
-          בטלפון – לחץ על המשימה הרצויה (1–6).<br />במחשב – המשימות מיועדות
-          לצפייה בלבד כדי למנוע לחיצות שגויות.
-        </div>
-      </div>
-      <div class="faq-item" onclick="toggleAnswer(this)">
-        <div class="faq-question">מי יכול לערוך משימות?</div>
-        <div class="faq-answer">רק מנהל לאחר כניסה עם קוד.</div>
-      </div>
-      <div class="faq-item" onclick="toggleAnswer(this)">
-        <div class="faq-question">מה הכפתור "📞" ליד מספר הטלפון?</div>
-        <div class="faq-answer">
-          לחיצה עליו תתחיל שיחה למספר הטלפון אם לא קורה שום דבר, נסה דרך chrome.
-        </div>
-      </div>
-      <div class="faq-item" onclick="toggleAnswer(this)">
-        <div class="faq-question">מה משמעות צבע המשימה ?</div>
-        <div class="faq-answer">
-          הצבע מראה את מצב המשימה:<br />
-          🟥 – יש משימה<br />
-          🟦 – יש משימת צוות<br />
-          🟩 – המשימה בוצעה
-        </div>
-      </div>
-      <div class="faq-item" onclick="toggleAnswer(this)">
-        <div class="faq-question">האם האתר מתעדכן בזמן אמת אצל כולם?</div>
-        <div class="faq-answer">
-          כן, כל השינויים מסתנכרנים מיידית דרך מסד הנתונים.
-        </div>
-      </div>
-      <div class="faq-item" onclick="toggleAnswer(this)">
-        <div class="faq-question">איך עורכים תיאורים של משימות?</div>
-        <div class="faq-answer">
-          אי אפשר לערוך. רק למחוק תיאור במצב ניהול בלחיצה עליו.
-        </div>
-      </div>
-      <div class="faq-item" onclick="toggleAnswer(this)">
-        <div class="faq-question">מה לעשות אם האתר לא נטען?</div>
-        <div class="faq-answer">
-          בדוק חיבור לאינטרנט ונסה לרענן את הדף. יש מצב שאתה בחניון תת-קרקעי :)
-        </div>
       </div>
     </div>
   </body>
@@ -1817,82 +1758,6 @@
       cursor: default;
     }
   }
-  .faq-button {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    background-color: #fc9247;
-    color: white;
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
-    font-weight: bold;
-    font-size: 20px;
-    cursor: pointer;
-    text-align: center;
-    line-height: 36px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-    z-index: 9999;
-    transition: background-color 0.3s ease;
-  }
-
-  .faq-button:hover {
-    background-color: #f57f2a;
-  }
-
-  .faq-popup {
-    position: fixed;
-    bottom: 70px;
-    left: 20px;
-    width: 320px;
-    max-height: 400px;
-    overflow-y: auto;
-    background-color: #ffffff;
-    border: 2px solid #fc9247;
-    border-radius: 12px;
-    padding: 16px;
-    font-family: sans-serif;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    display: none;
-    direction: rtl;
-    z-index: 9999;
-    animation: fadeIn 0.3s ease;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  .faq-item {
-    margin-bottom: 12px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    border-radius: 8px;
-    padding: 6px;
-  }
-
-  .faq-item:hover {
-    background-color: #f1f1f1;
-  }
-
-  .faq-question {
-    font-weight: bold;
-    color: #333;
-  }
-
-  .faq-answer {
-    display: none;
-    margin-top: 6px;
-    color: #555;
-    font-size: 14px;
-  }
-
   /* Стили для заметок дней */
   .day-notes-row {
     background-color: #f8f9fa;
