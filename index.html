@@ -759,6 +759,9 @@
         reloadTasksForWeek();
         createDayNotesCells();
         updateDayNotesDisplay();
+
+        // Add clear all fields button handler
+        document.getElementById('clear-all-fields').addEventListener('click', clearAllFields);
       });
 
       function fillAdminPanelWithTaskData(taskData, dbKey, rowIndex, colIndex, taskNumber) {
@@ -1046,6 +1049,49 @@
       // Делаем функции глобальными
       window.closeTaskFullScreen = closeTaskFullScreen;
       window.deleteTask = deleteTask;
+
+      function clearAllFields() {
+        // Clear main fields
+        document.getElementById('target-name').value = '';
+        document.getElementById('target-day').value = '';
+        document.getElementById('target-number').value = '';
+        document.getElementById('task-address').value = '';
+        document.getElementById('task-reason').value = '';
+        document.getElementById('task-comments').value = '';
+        
+        // Clear code entry fields
+        document.getElementById('code-entry').value = '';
+        document.getElementById('code-entry-option').value = '';
+        document.getElementById('no-code-entry').checked = false;
+        document.getElementById('code-entry').style.display = 'block';
+        document.getElementById('code-entry-options').style.display = 'none';
+        
+        // Clear team work fields
+        document.getElementById('team-work').checked = false;
+        document.getElementById('target-name-2').value = '';
+        document.getElementById('target-name-2-container').style.display = 'none';
+        
+        // Clear phone entries except the first one
+        const phoneList = document.getElementById('phone-list');
+        while (phoneList.children.length > 1) {
+          phoneList.removeChild(phoneList.lastChild);
+        }
+        // Clear the first phone entry
+        const firstPhoneEntry = phoneList.firstChild;
+        if (firstPhoneEntry) {
+          firstPhoneEntry.querySelector('.phone-number').value = '';
+          firstPhoneEntry.querySelector('.phone-name').value = '';
+        }
+        
+        // Clear task data from the form
+        document.getElementById('single-panel').dataset.dbKey = '';
+        document.getElementById('single-panel').dataset.rowIndex = '';
+        document.getElementById('single-panel').dataset.colIndex = '';
+        document.getElementById('single-panel').dataset.taskNumber = '';
+        document.getElementById('single-panel').dataset.isEditing = 'false';
+        
+        showNotification('כל השדות נוקו');
+      }
     </script>
     <script>
       function toggleFaq() {
@@ -1253,6 +1299,7 @@
         ></textarea>
       </label>
       <button id="single-insert">💾 שמור משימה</button>
+      <button id="clear-all-fields">🗑️ נקה את כל השדות</button>
       <button id="admin-exit">יציאה ממצב מנהל</button>
     </div>
 
@@ -2256,5 +2303,11 @@
       padding: 6px 12px;
       font-size: 13px;
     }
+  }
+
+
+
+  .notification {
+    // ... existing code ...
   }
 </style>
