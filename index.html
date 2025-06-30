@@ -42,6 +42,33 @@
         const container = document.createElement("div");
         container.className = "checkboxes";
 
+        // Делегирование долгого нажатия на всю .checkboxes
+        let longPressTimer = null;
+        let longPressTarget = null;
+        container.addEventListener('mousedown', (e) => {
+          const label = e.target.closest('label');
+          if (!label || e.target.type === 'checkbox') return;
+          longPressTarget = label;
+          longPressTimer = setTimeout(() => {
+            // tooltip всегда последний child label
+            const tooltip = label.querySelector('.tooltip');
+            if (tooltip) showTaskFullScreen(tooltip.innerText);
+          }, 500);
+        });
+        container.addEventListener('mouseup', () => { clearTimeout(longPressTimer); });
+        container.addEventListener('mouseleave', () => { clearTimeout(longPressTimer); });
+        container.addEventListener('touchstart', (e) => {
+          const label = e.target.closest('label');
+          if (!label || e.target.type === 'checkbox') return;
+          longPressTarget = label;
+          longPressTimer = setTimeout(() => {
+            const tooltip = label.querySelector('.tooltip');
+            if (tooltip) showTaskFullScreen(tooltip.innerText);
+          }, 500);
+        });
+        container.addEventListener('touchend', () => { clearTimeout(longPressTimer); });
+        container.addEventListener('touchcancel', () => { clearTimeout(longPressTimer); });
+
         // Чекбоксы разрешены только на мобильных (userAgent + touch)
         const isMobile =
           /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i.test(
@@ -83,7 +110,7 @@
             checkbox.checked = data?.checked || false;
             // Формируем текст для tooltip из отдельных полей
             const phoneText = data.phones ? data.phones.map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`).join("\n") : "";
-            tooltip.innerText = `כתובת: ${data.address || ""}\nקוד כניסה: ${data.code || ""}\n${phoneText}\nסיבה: ${data.reason || ""}\nהערות: ${data.comments || ""}`;
+            tooltip.innerText = `כתובת: ${data.address || ""}\nקוד כניסה: ${data.code || ""}\n${phoneText}\nמשימה: ${data.reason || ""}\nהערות: ${data.comments || ""}`;
             // Если есть адрес, показываем его первой строкой, а номер задачи — второй
             if (data.address && data.address.trim()) {
               textDiv.innerHTML = `<div>${data.address}</div><div style='font-size:0.9em;color:#888;'>${taskNum}</div>`;
@@ -176,15 +203,15 @@
       }
 
       function updateTableDisplay() {
-        const selectedDay = parseInt(
-          document.getElementById("day-select").value
-        );
+        const selectedDay = parseInt(document.getElementById("day-select").value);
         const isMobile = window.matchMedia("(max-width: 600px)").matches;
-        document.querySelectorAll('th[id^="day-"], td.cell').forEach((el) => {
-          const colIndex =
-            parseInt(el.id?.split("-")[1]) ||
-            Array.from(el.parentNode.children).indexOf(el) - 1;
-          el.style.display = isMobile && colIndex !== selectedDay ? "none" : "";
+        const rows = document.querySelectorAll('#schedule-table tbody tr');
+        rows.forEach((row, rowIndex) => {
+          if (isMobile) {
+            row.style.display = (rowIndex === selectedDay) ? '' : 'none';
+          } else {
+            row.style.display = '';
+          }
         });
       }
 
@@ -508,7 +535,7 @@
             const phoneText = phones
               .map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`)
               .join("\n");
-            const noteText = `כתובת: ${address}\n${codeText}\n${phoneText}\nסיבה: ${reason}\nהערות: ${comments}`;
+            const noteText = `כתובת: ${address}\n${codeText}\n${phoneText}\nמשימה: ${reason}\nהערות: ${comments}`;
             const teamColor = isTeamWork ? "cyan" : null;
 
             const rowIndex = parseInt(targetDay); // день недели (строка)
