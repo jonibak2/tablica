@@ -1169,7 +1169,7 @@
               .print-header { text-align: center; font-size: 1.25em; font-weight: bold; margin-top: 18px; margin-bottom: 6px; }
               .print-logo { display: block; margin: 8px auto 10px auto; max-width: 140px; }
               .tasks-list { max-width: 600px; margin: 0 auto; }
-              .task-print-block { margin: 2px 0; padding: 4px 0 2px 0; box-sizing: border-box; page-break-inside: avoid; border: none; border-radius: 0; }
+              .task-print-block { margin: 16px 0; padding: 4px 0 2px 0; box-sizing: border-box; page-break-inside: avoid; border: none; border-radius: 0; min-height: 38px; }
               .task-field { margin-bottom: 3px; font-size: 0.98em; }
               .task-label { font-weight: bold; }
               @media print {
@@ -1188,7 +1188,6 @@
             <div class="task-print-block">
               <div class="task-field"><span class="task-label">כתובת:</span> ${task.address || ''}</div>
               <div class="task-field"><span class="task-label">משימה:</span> ${task.reason || ''}</div>
-              <div class="task-field"><span class="task-label">הערות:</span> ${task.comments || ''}</div>
             </div>
           `;
         });
