@@ -404,7 +404,7 @@
           
           // Создаем ячейку, которая объединяет две колонки
           const mobileNotesCell = document.createElement('td');
-          mobileNotesCell.colSpan = 2;
+          mobileNotesCell.colSpan = 6;
           mobileNotesCell.className = 'mobile-notes-cell';
           
           const notesContainer = document.createElement('div');
@@ -1107,6 +1107,109 @@
         
         showNotification('כל השדות נוקו');
       }
+
+      // === Печать задач ===
+      document.getElementById('print-day-tasks').addEventListener('click', () => {
+        document.getElementById('print-modal').style.display = 'flex';
+      });
+      document.getElementById('print-modal-cancel').addEventListener('click', () => {
+        document.getElementById('print-modal').style.display = 'none';
+      });
+      document.getElementById('print-modal-confirm').addEventListener('click', async () => {
+        const dayIndex = parseInt(document.getElementById('print-day-select').value);
+        const name = document.getElementById('print-name-select').value;
+        document.getElementById('print-modal').style.display = 'none';
+        await printTasksForDayAndName(dayIndex, name);
+      });
+
+      // === Печать задач для выбранного дня и сотрудника ===
+      async function printTasksForDayAndName(dayIndex, name) {
+        const { dateRange, sunday } = getWeekDateRange(weekOffset);
+        const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
+        const names = ["טימור", "יעקב", "אלי", "טכנאי ביצוע"];
+        const taskNumbers = [1, 2, 3, 4, 5, 6, 7];
+        const colIndex = names.indexOf(name);
+        if (colIndex === -1) {
+          alert('שם לא תקין');
+          return;
+        }
+        // Получаем дату дня
+        const date = new Date(sunday);
+        date.setDate(sunday.getDate() + dayIndex);
+        const dd = String(date.getDate()).padStart(2, "0");
+        const mm = String(date.getMonth() + 1).padStart(2, "0");
+        const yyyy = date.getFullYear();
+        const dayLabel = dayNames[dayIndex];
+        const dateLabel = `${dd}.${mm}.${yyyy}`;
+
+        // Собираем задачи
+        let tasks = [];
+        for (let taskNum of taskNumbers) {
+          const dbKey = `notes/${dateRange}/${dayIndex}/${colIndex}/${taskNum}`;
+          // eslint-disable-next-line no-await-in-loop
+          const snapshot = await get(ref(db, dbKey));
+          const data = snapshot.val();
+          if (data && (data.address || data.reason)) {
+            tasks.push({ ...data, taskNumber: taskNum });
+          }
+        }
+        if (tasks.length === 0) {
+          alert('אין משימות לאותו יום ולעובד שנבחר');
+          return;
+        }
+
+        // Формируем HTML для печати
+        let printHtml = `
+          <html lang="he" dir="rtl">
+          <head>
+            <meta charset="UTF-8">
+            <title>משימות להדפסה</title>
+            <style>
+              body { font-family: sans-serif; direction: rtl; margin: 0; padding: 0; }
+              .print-logo { display: block; margin: 24px auto 18px auto; max-width: 180px; }
+              .task-print-block { border: 2px solid #83a737; border-radius: 10px; margin: 18px auto; padding: 18px 20px; max-width: 600px; page-break-inside: avoid; }
+              .task-header { font-size: 1.2em; font-weight: bold; margin-bottom: 10px; color: #83a737; }
+              .task-field { margin-bottom: 7px; font-size: 1em; }
+              .task-label { font-weight: bold; }
+              @media print {
+                .task-print-block { page-break-inside: avoid; }
+              }
+            </style>
+          </head>
+          <body>
+            <img src="utech.jpg" alt="Utech Logo" class="print-logo" />
+        `;
+        tasks.forEach((task, idx) => {
+          if (idx > 0 && idx % 3 === 0) {
+            printHtml += '<div style="page-break-after: always;"></div>';
+            printHtml += '<img src="utech.jpg" alt="Utech Logo" class="print-logo" />';
+          }
+          printHtml += `
+            <div class="task-print-block">
+              <div class="task-header">${name} | ${dateLabel} | ${dayLabel}</div>
+              <div class="task-field"><span class="task-label">כתובת:</span> ${task.address || ''}</div>
+              <div class="task-field"><span class="task-label">קוד:</span> ${task.code || ''}</div>
+              <div class="task-field"><span class="task-label">טלפון${task.phones && task.phones.length > 1 ? 'ים' : ''}:</span><br>
+                ${(task.phones || []).map((p, i) => `טלפון ${i + 1}: ${p.phone || ''}, שם: ${p.name || ''}`).join('<br>')}
+              </div>
+              <div class="task-field"><span class="task-label">משימה:</span> ${task.reason || ''}</div>
+              <div class="task-field"><span class="task-label">הערות:</span> ${task.comments || ''}</div>
+            </div>
+          `;
+        });
+        printHtml += '</body></html>';
+
+        // Открываем новое окно и печатаем
+        const printWindow = window.open('', '_blank');
+        printWindow.document.open();
+        printWindow.document.write(printHtml);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+          // printWindow.close(); // Можно раскомментировать для автозакрытия
+        }, 500);
+      }
     </script>
     <script>
 
@@ -1307,6 +1410,7 @@
       </label>
       <button id="single-insert">💾 שמור משימה</button>
       <button id="clear-all-fields">🗑️ נקה את כל השדות</button>
+      <button id="print-day-tasks">🖨️ הדפס משימות</button>
     </div>
 
     <div id="task-overlay">
@@ -1317,6 +1421,34 @@
       <div id="back-confirm-content">
         <p>לחץ שוב על "חזור" כדי לצאת</p>
         <button id="back-cancel">ביטול</button>
+      </div>
+    </div>
+
+    <!-- Модальное окно выбора дня и сотрудника для печати -->
+    <div id="print-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:20000; justify-content:center; align-items:center;">
+      <div style="background:#fff; padding:24px; border-radius:10px; min-width:260px; max-width:90vw;">
+        <h3 style="margin-top:0;">בחר יום ועובד להדפסה</h3>
+        <label>יום:
+          <select id="print-day-select">
+            <option value="0">ראשון</option>
+            <option value="1">שני</option>
+            <option value="2">שלישי</option>
+            <option value="3">רביעי</option>
+            <option value="4">חמישי</option>
+          </select>
+        </label>
+        <label>עובד:
+          <select id="print-name-select">
+            <option value="טימור">טימור</option>
+            <option value="יעקב">יעקב</option>
+            <option value="אלי">אלי</option>
+            <option value="טכנאי ביצוע">טכנאי ביצוע</option>
+          </select>
+        </label>
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button id="print-modal-confirm">הדפס</button>
+          <button id="print-modal-cancel">ביטול</button>
+        </div>
       </div>
     </div>
   </body>
