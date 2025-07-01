@@ -1166,10 +1166,11 @@
             <title>משימות להדפסה</title>
             <style>
               body { font-family: sans-serif; direction: rtl; margin: 0; padding: 0; }
-              .print-logo { display: block; margin: 24px auto 18px auto; max-width: 180px; }
-              .task-print-block { border: 2px solid #83a737; border-radius: 10px; margin: 18px auto; padding: 18px 20px; max-width: 600px; page-break-inside: avoid; }
-              .task-header { font-size: 1.2em; font-weight: bold; margin-bottom: 10px; color: #83a737; }
-              .task-field { margin-bottom: 7px; font-size: 1em; }
+              .print-header { text-align: center; font-size: 1.25em; font-weight: bold; margin-top: 18px; margin-bottom: 6px; }
+              .print-logo { display: block; margin: 8px auto 10px auto; max-width: 140px; }
+              .tasks-list { max-width: 600px; margin: 0 auto; }
+              .task-print-block { margin: 2px 0; padding: 4px 0 2px 0; box-sizing: border-box; page-break-inside: avoid; border: none; border-radius: 0; }
+              .task-field { margin-bottom: 3px; font-size: 0.98em; }
               .task-label { font-weight: bold; }
               @media print {
                 .task-print-block { page-break-inside: avoid; }
@@ -1177,27 +1178,21 @@
             </style>
           </head>
           <body>
+            <div class="print-header">${name} — ${dateLabel}</div>
             <img src="utech.jpg" alt="Utech Logo" class="print-logo" />
+            <div class="tasks-list">
         `;
-        tasks.forEach((task, idx) => {
-          if (idx > 0 && idx % 3 === 0) {
-            printHtml += '<div style="page-break-after: always;"></div>';
-            printHtml += '<img src="utech.jpg" alt="Utech Logo" class="print-logo" />';
-          }
+        // Максимум 7 задач
+        tasks.slice(0, 7).forEach((task) => {
           printHtml += `
             <div class="task-print-block">
-              <div class="task-header">${name} | ${dateLabel} | ${dayLabel}</div>
               <div class="task-field"><span class="task-label">כתובת:</span> ${task.address || ''}</div>
-              <div class="task-field"><span class="task-label">קוד:</span> ${task.code || ''}</div>
-              <div class="task-field"><span class="task-label">טלפון${task.phones && task.phones.length > 1 ? 'ים' : ''}:</span><br>
-                ${(task.phones || []).map((p, i) => `טלפון ${i + 1}: ${p.phone || ''}, שם: ${p.name || ''}`).join('<br>')}
-              </div>
               <div class="task-field"><span class="task-label">משימה:</span> ${task.reason || ''}</div>
               <div class="task-field"><span class="task-label">הערות:</span> ${task.comments || ''}</div>
             </div>
           `;
         });
-        printHtml += '</body></html>';
+        printHtml += '</div></body></html>';
 
         // Открываем новое окно и печатаем
         const printWindow = window.open('', '_blank');
