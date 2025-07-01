@@ -1183,14 +1183,36 @@
             <div class="tasks-list">
         `;
         // Максимум 7 задач
-        tasks.slice(0, 7).forEach((task) => {
+        for (const task of tasks.slice(0, 7)) {
+          let teamText = '';
+          if (task.teamColor) {
+            // Найти имя второго участника команды
+            const colIndex = names.indexOf(name);
+            let teammate = '';
+            for (let otherCol = 0; otherCol < names.length; otherCol++) {
+              if (otherCol !== colIndex) {
+                const dbKey2 = `notes/${dateRange}/${dayIndex}/${otherCol}/${task.taskNumber}`;
+                // eslint-disable-next-line no-await-in-loop
+                const snap2 = await get(ref(db, dbKey2));
+                const data2 = snap2.val();
+                if (data2 && data2.teamColor === task.teamColor) {
+                  teammate = data2.name;
+                  break;
+                }
+              }
+            }
+            if (teammate) {
+              teamText = `<div class='task-field' style='color:#0080c0;font-size:0.95em;'>עבודת צוות עם: ${teammate}</div>`;
+            }
+          }
           printHtml += `
             <div class="task-print-block">
               <div class="task-field"><span class="task-label">כתובת:</span> ${task.address || ''}</div>
               <div class="task-field"><span class="task-label">משימה:</span> ${task.reason || ''}</div>
+              ${teamText}
             </div>
           `;
-        });
+        }
         printHtml += '</div></body></html>';
 
         // Открываем новое окно и печатаем
