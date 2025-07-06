@@ -136,7 +136,6 @@
           // --- Обработчики для открытия задачи на полный экран ---
           let longPressTimer = null;
           let longPressTarget = null;
-          let lastTapTime = 0;
 
           // Для ПК: долгое нажатие (мышь)
           label.addEventListener('mousedown', (e) => {
@@ -158,15 +157,11 @@
           label.addEventListener('mouseup', () => { clearTimeout(longPressTimer); });
           label.addEventListener('mouseleave', () => { clearTimeout(longPressTimer); });
 
-          // Для телефона: двойной тап
-          label.addEventListener('touchend', (e) => {
+          // Для телефона: долгое нажатие (touch)
+          label.addEventListener('touchstart', (e) => {
             if (e.target.type === 'checkbox') return;
-            
-            const currentTime = new Date().getTime();
-            const tapLength = currentTime - lastTapTime;
-            
-            if (tapLength < 500 && tapLength > 0) {
-              // Двойной тап
+            longPressTarget = label;
+            longPressTimer = setTimeout(() => {
               if (label.querySelector('.tooltip')?.innerText) {
                 showTaskFullScreen(label.querySelector('.tooltip').innerText, {
                   dateRange,
@@ -177,24 +172,12 @@
                   teamColor: null
                 });
               }
-            }
-            lastTapTime = currentTime;
+            }, 500);
           });
+          label.addEventListener('touchend', () => { clearTimeout(longPressTimer); });
+          label.addEventListener('touchcancel', () => { clearTimeout(longPressTimer); });
 
-          // Альтернатива: двойной клик (ПК)
-          label.addEventListener('dblclick', (e) => {
-            if (e.target.type === 'checkbox') return;
-            if (label.querySelector('.tooltip')?.innerText) {
-              showTaskFullScreen(label.querySelector('.tooltip').innerText, {
-                dateRange,
-                rowIndex,
-                colIndex,
-                taskNumber: i + 1,
-                isTeamWork: false,
-                teamColor: null
-              });
-            }
-          });
+
         });
         cell.appendChild(container);
       }
