@@ -79,10 +79,10 @@
               return;
             }
             checkbox.checked = data.checked || false;
-            const phoneText = data.phones ? data.phones.map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`).join("\n") : "";
+            const phoneText = data.phones ? data.phones.map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`).join("<br>") : "";
             const tooltip = document.createElement("div");
             tooltip.className = "tooltip";
-            tooltip.innerText = `כתובת: ${data.address || ""}\nקוד כניסה: ${data.code || ""}\n${phoneText}\nמשימה: ${data.reason || ""}\nהערות: ${data.comments || ""}`;
+            tooltip.innerHTML = `כתובת: ${data.address || ""}<br>קוד כניסה: ${data.code || ""}<br>${phoneText}<br>משימה: ${data.reason || ""}<br>הערות: ${data.comments || ""}`;
             if (data.address && data.address.trim()) {
               textDiv.innerHTML = `<div>${data.address}</div><div style='font-size:0.9em;color:#888;'>${taskNum}</div>`;
             } else {
@@ -565,8 +565,8 @@
 
             const phoneText = phones
               .map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`)
-              .join("\n");
-            const noteText = `כתובת: ${address}\n${codeText}\n${phoneText}\nמשימה: ${reason}\nהערות: ${comments}`;
+              .join("<br>");
+            const noteText = `כתובת: ${address}<br>${codeText}<br>${phoneText}<br>משימה: ${reason}<br>הערות: ${comments}`;
             const teamColor = isTeamWork ? "cyan" : null;
 
             const rowIndex = parseInt(targetDay); // день недели (строка)
@@ -579,115 +579,136 @@
             ) {
               return alert("נתונים לא תקינים");
             }
-            try {
-              const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
-              const isEditing = document.getElementById('single-panel').dataset.isEditing === 'true';
-              if (isEditing) {
-                // Редактируем существующую задачу
-                const dbKey = document.getElementById('single-panel').dataset.dbKey;
-                const originalRowIndex = parseInt(document.getElementById('single-panel').dataset.rowIndex);
-                const originalColIndex = parseInt(document.getElementById('single-panel').dataset.colIndex);
-                const originalTaskNumber = parseInt(document.getElementById('single-panel').dataset.taskNumber);
-                // Получаем данные оригинальной задачи для проверки командной работы
-                const originalSnapshot = await get(ref(db, dbKey));
-                const originalData = originalSnapshot.val();
-                // Если это была командная работа, удаляем второго участника
-                if (originalData && originalData.teamColor) {
-                  for (let otherColIndex = 0; otherColIndex < names.length; otherColIndex++) {
-                    if (otherColIndex !== originalColIndex) {
-                      const otherKey = `notes/${dateRange}/${originalRowIndex}/${otherColIndex}/${originalTaskNumber}`;
-                      const otherSnapshot = await get(ref(db, otherKey));
-                      const otherData = otherSnapshot.val();
-                      if (otherData && otherData.teamColor === originalData.teamColor) {
-                        await set(ref(db, otherKey), null);
+
+            // === Проверка совпадения выбранных значений перед отправкой ===
+            async function trySaveTaskWithCheck() {
+              // Считываем актуальные значения формы
+              const currentName = document.getElementById("target-name").value;
+              const currentDay = document.getElementById("target-day").value;
+              const currentNumber = document.getElementById("target-number").value;
+              // Проверяем совпадение
+              if (
+                currentName !== targetName1 ||
+                currentDay !== targetDay ||
+                currentNumber !== targetNumber
+              ) {
+                // Если не совпадает — повторяем попытку через 100 мс
+                setTimeout(trySaveTaskWithCheck, 100);
+                return;
+              }
+              // Если совпадает — сохраняем задачу
+              try {
+                const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
+                const isEditing = document.getElementById('single-panel').dataset.isEditing === 'true';
+                if (isEditing) {
+                  // Редактируем существующую задачу
+                  const dbKey = document.getElementById('single-panel').dataset.dbKey;
+                  const originalRowIndex = parseInt(document.getElementById('single-panel').dataset.rowIndex);
+                  const originalColIndex = parseInt(document.getElementById('single-panel').dataset.colIndex);
+                  const originalTaskNumber = parseInt(document.getElementById('single-panel').dataset.taskNumber);
+                  // Получаем данные оригинальной задачи для проверки командной работы
+                  const originalSnapshot = await get(ref(db, dbKey));
+                  const originalData = originalSnapshot.val();
+                  // Если это была командная работа, удаляем второго участника
+                  if (originalData && originalData.teamColor) {
+                    for (let otherColIndex = 0; otherColIndex < names.length; otherColIndex++) {
+                      if (otherColIndex !== originalColIndex) {
+                        const otherKey = `notes/${dateRange}/${originalRowIndex}/${otherColIndex}/${originalTaskNumber}`;
+                        const otherSnapshot = await get(ref(db, otherKey));
+                        const otherData = otherSnapshot.val();
+                        if (otherData && otherData.teamColor === originalData.teamColor) {
+                          await set(ref(db, otherKey), null);
+                        }
                       }
                     }
                   }
-                }
-                // Обновляем основную задачу
-                await set(ref(db, dbKey), {
-                  checked: false,
-                  name: targetName1,
-                  day: dayNames[rowIndex],
-                  taskNumber: parseInt(targetNumber),
-                  address: address,
-                  code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
-                  phones: phones,
-                  reason: reason,
-                  comments: comments,
-                  teamColor: teamColor,
-                });
-                // Если это командная работа, добавляем второго участника
-                if (isTeamWork) {
-                  const colIndex2 = names.indexOf(targetName2);
-                  if (colIndex2 !== -1) {
-                    const dbKey2 = `notes/${dateRange}/${rowIndex}/${colIndex2}/${targetNumber}`;
-                    await set(ref(db, dbKey2), {
-                      checked: false,
-                      name: targetName2,
-                      day: dayNames[rowIndex],
-                      taskNumber: parseInt(targetNumber),
-                      address: address,
-                      code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
-                      phones: phones,
-                      reason: reason,
-                      comments: comments,
-                      teamColor: teamColor,
-                    });
-                  } else {
-                    return alert("נתונים לא תקינים עבור האדם השני");
+                  // Обновляем основную задачу
+                  await set(ref(db, dbKey), {
+                    checked: false,
+                    name: targetName1,
+                    day: dayNames[rowIndex],
+                    taskNumber: parseInt(targetNumber),
+                    address: address,
+                    code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
+                    phones: phones,
+                    reason: reason,
+                    comments: comments,
+                    teamColor: teamColor,
+                  });
+                  // Если это командная работа, добавляем второго участника
+                  if (isTeamWork) {
+                    const colIndex2 = names.indexOf(targetName2);
+                    if (colIndex2 !== -1) {
+                      const dbKey2 = `notes/${dateRange}/${rowIndex}/${colIndex2}/${targetNumber}`;
+                      await set(ref(db, dbKey2), {
+                        checked: false,
+                        name: targetName2,
+                        day: dayNames[rowIndex],
+                        taskNumber: parseInt(targetNumber),
+                        address: address,
+                        code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
+                        phones: phones,
+                        reason: reason,
+                        comments: comments,
+                        teamColor: teamColor,
+                      });
+                    } else {
+                      return alert("נתונים לא תקינים עבור האדם השני");
+                    }
                   }
-                }
-                // Очищаем флаг редактирования
-                document.getElementById('single-panel').dataset.isEditing = 'false';
-                delete document.getElementById('single-panel').dataset.dbKey;
-                delete document.getElementById('single-panel').dataset.rowIndex;
-                delete document.getElementById('single-panel').dataset.colIndex;
-                delete document.getElementById('single-panel').dataset.taskNumber;
-                showNotification('המשימה עודכנה בהצלחה');
-              } else {
-                // Создаем новую задачу
-                const dbKey = `notes/${dateRange}/${rowIndex}/${colIndex}/${targetNumber}`;
-                await set(ref(db, dbKey), {
-                  checked: false,
-                  name: targetName1,
-                  day: dayNames[rowIndex],
-                  taskNumber: parseInt(targetNumber),
-                  address: address,
-                  code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
-                  phones: phones,
-                  reason: reason,
-                  comments: comments,
-                  teamColor: teamColor,
-                });
-                if (isTeamWork) {
-                  const colIndex2 = names.indexOf(targetName2);
-                  if (colIndex2 !== -1) {
-                    const dbKey2 = `notes/${dateRange}/${rowIndex}/${colIndex2}/${targetNumber}`;
-                    await set(ref(db, dbKey2), {
-                      checked: false,
-                      name: targetName2,
-                      day: dayNames[rowIndex],
-                      taskNumber: parseInt(targetNumber),
-                      address: address,
-                      code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
-                      phones: phones,
-                      reason: reason,
-                      comments: comments,
-                      teamColor: teamColor,
-                    });
-                  } else {
-                    return alert("נתונים לא תקינים עבור האדם השני");
+                  // Очищаем флаг редактирования
+                  document.getElementById('single-panel').dataset.isEditing = 'false';
+                  delete document.getElementById('single-panel').dataset.dbKey;
+                  delete document.getElementById('single-panel').dataset.rowIndex;
+                  delete document.getElementById('single-panel').dataset.colIndex;
+                  delete document.getElementById('single-panel').dataset.taskNumber;
+                  showNotification('המשימה עודכנה בהצלחה');
+                } else {
+                  // Создаем новую задачу
+                  const dbKey = `notes/${dateRange}/${rowIndex}/${colIndex}/${targetNumber}`;
+                  await set(ref(db, dbKey), {
+                    checked: false,
+                    name: targetName1,
+                    day: dayNames[rowIndex],
+                    taskNumber: parseInt(targetNumber),
+                    address: address,
+                    code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
+                    phones: phones,
+                    reason: reason,
+                    comments: comments,
+                    teamColor: teamColor,
+                  });
+                  if (isTeamWork) {
+                    const colIndex2 = names.indexOf(targetName2);
+                    if (colIndex2 !== -1) {
+                      const dbKey2 = `notes/${dateRange}/${rowIndex}/${colIndex2}/${targetNumber}`;
+                      await set(ref(db, dbKey2), {
+                        checked: false,
+                        name: targetName2,
+                        day: dayNames[rowIndex],
+                        taskNumber: parseInt(targetNumber),
+                        address: address,
+                        code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
+                        phones: phones,
+                        reason: reason,
+                        comments: comments,
+                        teamColor: teamColor,
+                      });
+                    } else {
+                      return alert("נתונים לא תקינים עבור האדם השני");
+                    }
                   }
+                  showNotification('משימה חדשה נשמרה בהצלחה');
                 }
-                showNotification('משימה חדשה נשמרה בהצלחה');
+                // Перезагружаем задачи для обновления отображения
+                reloadTasksForWeek();
+              } catch (error) {
+                console.error("Error saving task:", error);
+                alert("שגיאה בשמירת המשימה");
               }
-              // Перезагружаем задачи для обновления отображения
-              reloadTasksForWeek();
-            } catch (error) {
-              console.error("Error saving task:", error);
-              alert("שגיאה בשמירת המשימה");
             }
+            // Запускаем проверку и сохранение
+            trySaveTaskWithCheck();
           });
 
         document.getElementById("team-work").addEventListener("change", () => {
