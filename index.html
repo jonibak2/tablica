@@ -136,6 +136,7 @@
           // --- Обработчики для открытия задачи на полный экран ---
           let longPressTimer = null;
           let longPressTarget = null;
+          let lastTapTime = 0;
 
           // Для ПК: долгое нажатие (мышь)
           label.addEventListener('mousedown', (e) => {
@@ -157,11 +158,15 @@
           label.addEventListener('mouseup', () => { clearTimeout(longPressTimer); });
           label.addEventListener('mouseleave', () => { clearTimeout(longPressTimer); });
 
-          // Для телефона: долгое нажатие (touch)
-          label.addEventListener('touchstart', (e) => {
+          // Для телефона: двойной тап
+          label.addEventListener('touchend', (e) => {
             if (e.target.type === 'checkbox') return;
-            longPressTarget = label;
-            longPressTimer = setTimeout(() => {
+            
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTapTime;
+            
+            if (tapLength < 500 && tapLength > 0) {
+              // Двойной тап
               if (label.querySelector('.tooltip')?.innerText) {
                 showTaskFullScreen(label.querySelector('.tooltip').innerText, {
                   dateRange,
@@ -172,10 +177,9 @@
                   teamColor: null
                 });
               }
-            }, 500);
+            }
+            lastTapTime = currentTime;
           });
-          label.addEventListener('touchend', () => { clearTimeout(longPressTimer); });
-          label.addEventListener('touchcancel', () => { clearTimeout(longPressTimer); });
 
           // Альтернатива: двойной клик (ПК)
           label.addEventListener('dblclick', (e) => {
@@ -303,6 +307,8 @@
       function updateTableDates() {
         const { sunday } = getWeekDateRange(weekOffset);
         const rows = document.querySelectorAll('#schedule-table tbody tr');
+        const today = new Date();
+        
         for (let i = 0; i < 5; i++) {
           const date = new Date(sunday);
           date.setDate(sunday.getDate() + i);
@@ -311,6 +317,17 @@
           const dayCell = rows[i].querySelector('td');
           if (dayCell) {
             dayCell.innerText = `${dayNames[i]} ${dd}.${mm}`;
+            
+            // Проверяем, является ли этот день сегодняшним
+            const isToday = date.getDate() === today.getDate() && 
+                           date.getMonth() === today.getMonth() && 
+                           date.getFullYear() === today.getFullYear();
+            
+            if (isToday) {
+              dayCell.classList.add('today');
+            } else {
+              dayCell.classList.remove('today');
+            }
           }
         }
       }
@@ -1122,6 +1139,32 @@
         await printTasksForDayAndName(dayIndex, name);
       });
 
+      // === Замена задач ===
+      document.getElementById('swap-tasks').addEventListener('click', () => {
+        document.getElementById('swap-modal').style.display = 'flex';
+      });
+      document.getElementById('swap-modal-cancel').addEventListener('click', () => {
+        document.getElementById('swap-modal').style.display = 'none';
+      });
+      document.getElementById('swap-modal-confirm').addEventListener('click', async () => {
+        const day1Index = parseInt(document.getElementById('swap-day1-select').value);
+        const name1 = document.getElementById('swap-name1-select').value;
+        const task1 = parseInt(document.getElementById('swap-task1-select').value);
+        
+        const day2Index = parseInt(document.getElementById('swap-day2-select').value);
+        const name2 = document.getElementById('swap-name2-select').value;
+        const task2 = parseInt(document.getElementById('swap-task2-select').value);
+        
+        // Проверяем, что выбраны разные задачи
+        if (day1Index === day2Index && name1 === name2 && task1 === task2) {
+          alert('נא לבחור שתי משימות שונות');
+          return;
+        }
+        
+        document.getElementById('swap-modal').style.display = 'none';
+        await swapTasks(day1Index, name1, task1, day2Index, name2, task2);
+      });
+
       // === Печать задач для выбранного дня и сотрудника ===
       async function printTasksForDayAndName(dayIndex, name) {
         const { dateRange, sunday } = getWeekDateRange(weekOffset);
@@ -1225,6 +1268,100 @@
           printWindow.print();
           // printWindow.close(); // Можно раскомментировать для автозакрытия
         }, 500);
+      }
+
+      // === Замена задач между разными днями и сотрудниками ===
+      async function swapTasks(day1Index, name1, task1, day2Index, name2, task2) {
+        const { dateRange } = getWeekDateRange(weekOffset);
+        const names = ["טימור", "יעקב", "אלי", "טכנאי ביצוע"];
+        const col1Index = names.indexOf(name1);
+        const col2Index = names.indexOf(name2);
+        
+        if (col1Index === -1 || col2Index === -1) {
+          alert('שם לא תקין');
+          return;
+        }
+
+        try {
+          // Получаем данные обеих задач
+          const task1Key = `notes/${dateRange}/${day1Index}/${col1Index}/${task1}`;
+          const task2Key = `notes/${dateRange}/${day2Index}/${col2Index}/${task2}`;
+          
+          const task1Snapshot = await get(ref(db, task1Key));
+          const task2Snapshot = await get(ref(db, task2Key));
+          
+          const task1Data = task1Snapshot.val();
+          const task2Data = task2Snapshot.val();
+
+          // Проверяем, что хотя бы одна задача существует
+          if (!task1Data && !task2Data) {
+            alert('לא נמצאו משימות להחלפה');
+            return;
+          }
+
+          // Меняем местами задачи
+          if (task1Data) {
+            await set(ref(db, task2Key), task1Data);
+          } else {
+            await set(ref(db, task2Key), null);
+          }
+          
+          if (task2Data) {
+            await set(ref(db, task1Key), task2Data);
+          } else {
+            await set(ref(db, task1Key), null);
+          }
+
+          // Если это командные задачи, нужно обновить и задачи напарников
+          if (task1Data && task1Data.teamColor) {
+            // Находим и обновляем задачу напарника для task1
+            for (let otherColIndex = 0; otherColIndex < names.length; otherColIndex++) {
+              if (otherColIndex !== col1Index) {
+                const otherTask1Key = `notes/${dateRange}/${day1Index}/${otherColIndex}/${task1}`;
+                const otherTask1Snapshot = await get(ref(db, otherTask1Key));
+                const otherTask1Data = otherTask1Snapshot.val();
+                
+                if (otherTask1Data && otherTask1Data.teamColor === task1Data.teamColor) {
+                  // Удаляем задачу напарника с первого места
+                  await set(ref(db, otherTask1Key), null);
+                  
+                  // Добавляем задачу напарника на второе место
+                  const otherTask2Key = `notes/${dateRange}/${day2Index}/${otherColIndex}/${task2}`;
+                  await set(ref(db, otherTask2Key), otherTask1Data);
+                }
+              }
+            }
+          }
+          
+          if (task2Data && task2Data.teamColor) {
+            // Находим и обновляем задачу напарника для task2
+            for (let otherColIndex = 0; otherColIndex < names.length; otherColIndex++) {
+              if (otherColIndex !== col2Index) {
+                const otherTask2Key = `notes/${dateRange}/${day2Index}/${otherColIndex}/${task2}`;
+                const otherTask2Snapshot = await get(ref(db, otherTask2Key));
+                const otherTask2Data = otherTask2Snapshot.val();
+                
+                if (otherTask2Data && otherTask2Data.teamColor === task2Data.teamColor) {
+                  // Удаляем задачу напарника со второго места
+                  await set(ref(db, otherTask2Key), null);
+                  
+                  // Добавляем задачу напарника на первое место
+                  const otherTask1Key = `notes/${dateRange}/${day1Index}/${otherColIndex}/${task1}`;
+                  await set(ref(db, otherTask1Key), otherTask2Data);
+                }
+              }
+            }
+          }
+
+          showNotification('המשימות הוחלפו בהצלחה');
+          
+          // Перезагружаем задачи для обновления отображения
+          reloadTasksForWeek();
+          
+        } catch (error) {
+          console.error("Error swapping tasks:", error);
+          alert("שגיאה בהחלפת המשימות");
+        }
       }
     </script>
     <script>
@@ -1427,6 +1564,7 @@
       <button id="single-insert">💾 שמור משימה</button>
       <button id="clear-all-fields">🗑️ נקה את כל השדות</button>
       <button id="print-day-tasks">🖨️ הדפס משימות</button>
+      <button id="swap-tasks">🔄 החלף משימות</button>
     </div>
 
     <div id="task-overlay">
@@ -1464,6 +1602,81 @@
         <div style="display:flex; gap:10px; margin-top:16px;">
           <button id="print-modal-confirm">הדפס</button>
           <button id="print-modal-cancel">ביטול</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модальное окно замены задач -->
+    <div id="swap-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:20000; justify-content:center; align-items:center;">
+      <div style="background:#fff; padding:24px; border-radius:10px; min-width:300px; max-width:90vw;">
+        <h3 style="margin-top:0;">החלף משימות</h3>
+        <div style="display:flex; gap:20px; margin-bottom:15px;">
+          <div style="flex:1;">
+            <h4 style="margin:0 0 10px 0; color:#333;">משימה ראשונה</h4>
+            <label>יום:
+              <select id="swap-day1-select">
+                <option value="0">ראשון</option>
+                <option value="1">שני</option>
+                <option value="2">שלישי</option>
+                <option value="3">רביעי</option>
+                <option value="4">חמישי</option>
+              </select>
+            </label>
+            <label>עובד:
+              <select id="swap-name1-select">
+                <option value="טימור">טימור</option>
+                <option value="יעקב">יעקב</option>
+                <option value="אלי">אלי</option>
+                <option value="טכנאי ביצוע">טכנאי ביצוע</option>
+              </select>
+            </label>
+            <label>מספר משימה:
+              <select id="swap-task1-select">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+              </select>
+            </label>
+          </div>
+          <div style="flex:1;">
+            <h4 style="margin:0 0 10px 0; color:#333;">משימה שנייה</h4>
+            <label>יום:
+              <select id="swap-day2-select">
+                <option value="0">ראשון</option>
+                <option value="1">שני</option>
+                <option value="2">שלישי</option>
+                <option value="3">רביעי</option>
+                <option value="4">חמישי</option>
+              </select>
+            </label>
+            <label>עובד:
+              <select id="swap-name2-select">
+                <option value="טימור">טימור</option>
+                <option value="יעקב">יעקב</option>
+                <option value="אלי">אלי</option>
+                <option value="טכנאי ביצוע">טכנאי ביצוע</option>
+              </select>
+            </label>
+            <label>מספר משימה:
+              <select id="swap-task2-select">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button id="swap-modal-confirm">החלף</button>
+          <button id="swap-modal-cancel">ביטול</button>
         </div>
       </div>
     </div>
