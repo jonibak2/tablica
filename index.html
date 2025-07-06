@@ -30,10 +30,10 @@
       const db = getDatabase(app);
 
       const isAdmin = { status: false };
-      const names = ["טימור", "יעקב", "אלי", "טכנאי ביצוע"];
+      const names = ["טימור", "יעקב", "עופר", "טכנאי ביצוע"];
       const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
       const teamColors = ["cyan"];
-      const taskNumbers = [1, 2, 3, 4, 5, 6, 7];
+      const taskNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
       let isMobile = window.matchMedia("(max-width: 600px)").matches;
 
       // Автоматически устанавливаем админа для ПК
@@ -499,35 +499,23 @@
         document
           .getElementById("single-insert")
           .addEventListener("click", async () => {
+            // 1. Собираем все значения формы
             const isTeamWork = document.getElementById("team-work").checked;
             const targetName1 = document.getElementById("target-name").value;
-            const targetName2 = isTeamWork
-              ? document.getElementById("target-name-2").value
-              : null;
+            const targetName2 = isTeamWork ? document.getElementById("target-name-2").value : null;
             const targetDay = document.getElementById("target-day").value;
             const targetNumber = document.getElementById("target-number").value;
-            const address = document
-              .getElementById("task-address")
-              .value.trim();
+            const address = document.getElementById("task-address").value.trim();
             const reason = document.getElementById("task-reason").value.trim();
-            const comments = document
-              .getElementById("task-comments")
-              .value.trim();
-
+            const comments = document.getElementById("task-comments").value.trim();
             const phoneEntries = document.querySelectorAll(".phone-entry");
             const phones = [];
             for (let i = 0; i < phoneEntries.length; i++) {
-              const phone = phoneEntries[i]
-                .querySelector(".phone-number")
-                .value.trim();
-              const name = phoneEntries[i]
-                .querySelector(".phone-name")
-                .value.trim();
-              if (!phone || !name)
-                return alert("נא למלא את כל שדות הטלפון והשמות");
+              const phone = phoneEntries[i].querySelector(".phone-number").value.trim();
+              const name = phoneEntries[i].querySelector(".phone-name").value.trim();
+              if (!phone || !name) return alert("נא למלא את כל שדות הטלפון והשמות");
               phones.push({ phone, name });
             }
-
             const codes = {
               entry: {
                 noCode: document.getElementById("no-code-entry").checked,
@@ -535,180 +523,103 @@
                 option: document.getElementById("code-entry-option").value,
               },
             };
-
-            const codeText = `קוד כניסה: ${
-              codes.entry.noCode
-                ? codes.entry.option || "לא צוין"
-                : codes.entry.code || "לא צוין"
-            }`;
-
-            if (
-              !targetName1 ||
-              !targetDay ||
-              !targetNumber ||
-              !address ||
-              !reason
-            ) {
+            if (!targetName1 || !targetDay || !targetNumber || !address || !reason) {
               return alert("נא למלא את כל השדות");
             }
-
             if (isTeamWork && (!targetName2 || targetName1 === targetName2)) {
               return alert("נא לבחור שני אנשים שונים לעבודת צוות");
             }
-
             if (!codes.entry.noCode && !codes.entry.code) {
               return alert("נא להזין קוד עבור כניסה או לסמן אין קוד");
             }
             if (codes.entry.noCode && !codes.entry.option) {
               return alert("נא לבחור סיבה עבור אין קוד בכניסה");
             }
-
-            const phoneText = phones
-              .map((p, i) => `טלפון ${i + 1}: ${p.phone}, שם: ${p.name}`)
-              .join("<br>");
-            const noteText = `כתובת: ${address}<br>${codeText}<br>${phoneText}<br>משימה: ${reason}<br>הערות: ${comments}`;
-            const teamColor = isTeamWork ? "cyan" : null;
-
-            const rowIndex = parseInt(targetDay); // день недели (строка)
-            const colIndex = names.indexOf(targetName1); // имя (столбец)
-            if (
-              colIndex === -1 ||
-              isNaN(rowIndex) ||
-              isNaN(parseInt(targetNumber)) ||
-              parseInt(targetNumber) > 7 // allow 7
-            ) {
-              return alert("נתונים לא תקינים");
-            }
-
-            // === Проверка совпадения выбранных значений перед отправкой ===
-            async function trySaveTaskWithCheck() {
-              // Считываем актуальные значения формы
-              const currentName = document.getElementById("target-name").value;
-              const currentDay = document.getElementById("target-day").value;
-              const currentNumber = document.getElementById("target-number").value;
-              // Проверяем совпадение
-              if (
-                currentName !== targetName1 ||
-                currentDay !== targetDay ||
-                currentNumber !== targetNumber
-              ) {
-                // Если не совпадает — повторяем попытку через 100 мс
-                setTimeout(trySaveTaskWithCheck, 100);
-                return;
+            // --- ВСТАВКА МЕЖДУ ЗАДАЧАМИ ---
+            let insertNumber = parseInt(targetNumber);
+            const insertBetween = document.getElementById('insert-between-checkbox').checked;
+            if (insertBetween) {
+              const between1 = parseInt(document.getElementById('between-task1').value);
+              const between2 = parseInt(document.getElementById('between-task2').value);
+              insertNumber = between2;
+              if (between2 > 10) {
+                return alert('Нельзя вставить выше 10-й задачи!');
               }
-              // Если совпадает — сохраняем задачу
-              try {
-                const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
-                const isEditing = document.getElementById('single-panel').dataset.isEditing === 'true';
-                if (isEditing) {
-                  // Редактируем существующую задачу
-                  const dbKey = document.getElementById('single-panel').dataset.dbKey;
-                  const originalRowIndex = parseInt(document.getElementById('single-panel').dataset.rowIndex);
-                  const originalColIndex = parseInt(document.getElementById('single-panel').dataset.colIndex);
-                  const originalTaskNumber = parseInt(document.getElementById('single-panel').dataset.taskNumber);
-                  // Получаем данные оригинальной задачи для проверки командной работы
-                  const originalSnapshot = await get(ref(db, dbKey));
-                  const originalData = originalSnapshot.val();
-                  // Если это была командная работа, удаляем второго участника
-                  if (originalData && originalData.teamColor) {
-                    for (let otherColIndex = 0; otherColIndex < names.length; otherColIndex++) {
-                      if (otherColIndex !== originalColIndex) {
-                        const otherKey = `notes/${dateRange}/${originalRowIndex}/${otherColIndex}/${originalTaskNumber}`;
-                        const otherSnapshot = await get(ref(db, otherKey));
-                        const otherData = otherSnapshot.val();
-                        if (otherData && otherData.teamColor === originalData.teamColor) {
-                          await set(ref(db, otherKey), null);
-                        }
-                      }
-                    }
-                  }
-                  // Обновляем основную задачу
-                  await set(ref(db, dbKey), {
-                    checked: false,
-                    name: targetName1,
-                    day: dayNames[rowIndex],
-                    taskNumber: parseInt(targetNumber),
-                    address: address,
-                    code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
-                    phones: phones,
-                    reason: reason,
-                    comments: comments,
-                    teamColor: teamColor,
-                  });
-                  // Если это командная работа, добавляем второго участника
-                  if (isTeamWork) {
-                    const colIndex2 = names.indexOf(targetName2);
-                    if (colIndex2 !== -1) {
-                      const dbKey2 = `notes/${dateRange}/${rowIndex}/${colIndex2}/${targetNumber}`;
-                      await set(ref(db, dbKey2), {
-                        checked: false,
-                        name: targetName2,
-                        day: dayNames[rowIndex],
-                        taskNumber: parseInt(targetNumber),
-                        address: address,
-                        code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
-                        phones: phones,
-                        reason: reason,
-                        comments: comments,
-                        teamColor: teamColor,
-                      });
-                    } else {
-                      return alert("נתונים לא תקינים עבור האדם השני");
-                    }
-                  }
-                  // Очищаем флаг редактирования
-                  document.getElementById('single-panel').dataset.isEditing = 'false';
-                  delete document.getElementById('single-panel').dataset.dbKey;
-                  delete document.getElementById('single-panel').dataset.rowIndex;
-                  delete document.getElementById('single-panel').dataset.colIndex;
-                  delete document.getElementById('single-panel').dataset.taskNumber;
-                  showNotification('המשימה עודכנה בהצלחה');
-                } else {
-                  // Создаем новую задачу
-                  const dbKey = `notes/${dateRange}/${rowIndex}/${colIndex}/${targetNumber}`;
-                  await set(ref(db, dbKey), {
-                    checked: false,
-                    name: targetName1,
-                    day: dayNames[rowIndex],
-                    taskNumber: parseInt(targetNumber),
-                    address: address,
-                    code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
-                    phones: phones,
-                    reason: reason,
-                    comments: comments,
-                    teamColor: teamColor,
-                  });
-                  if (isTeamWork) {
-                    const colIndex2 = names.indexOf(targetName2);
-                    if (colIndex2 !== -1) {
-                      const dbKey2 = `notes/${dateRange}/${rowIndex}/${colIndex2}/${targetNumber}`;
-                      await set(ref(db, dbKey2), {
-                        checked: false,
-                        name: targetName2,
-                        day: dayNames[rowIndex],
-                        taskNumber: parseInt(targetNumber),
-                        address: address,
-                        code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
-                        phones: phones,
-                        reason: reason,
-                        comments: comments,
-                        teamColor: teamColor,
-                      });
-                    } else {
-                      return alert("נתונים לא תקינים עבור האדם השני");
-                    }
-                  }
-                  showNotification('משימה חדשה נשמרה בהצלחה');
+              const { dateRange } = getWeekDateRange(weekOffset);
+              for (let n = 10; n >= between2 + 1; n--) {
+                const oldKey = `notes/${dateRange}/${targetDay}/${names.indexOf(targetName1)}/${n-1}`;
+                const newKey = `notes/${dateRange}/${targetDay}/${names.indexOf(targetName1)}/${n}`;
+                // eslint-disable-next-line no-await-in-loop
+                const snap = await get(ref(db, oldKey));
+                if (snap.exists()) {
+                  const data = snap.val();
+                  data.taskNumber = n;
+                  // eslint-disable-next-line no-await-in-loop
+                  await set(ref(db, newKey), data);
+                  // eslint-disable-next-line no-await-in-loop
+                  await set(ref(db, oldKey), null);
                 }
-                // Перезагружаем задачи для обновления отображения
-                reloadTasksForWeek();
-              } catch (error) {
-                console.error("Error saving task:", error);
-                alert("שגיאה בשמירת המשימה");
+              }
+              if (isTeamWork) {
+                const colIndex2 = names.indexOf(targetName2);
+                if (colIndex2 !== -1) {
+                  for (let n = 10; n >= between2 + 1; n--) {
+                    const oldKey2 = `notes/${dateRange}/${targetDay}/${colIndex2}/${n-1}`;
+                    const newKey2 = `notes/${dateRange}/${targetDay}/${colIndex2}/${n}`;
+                    // eslint-disable-next-line no-await-in-loop
+                    const snap2 = await get(ref(db, oldKey2));
+                    if (snap2.exists()) {
+                      const data2 = snap2.val();
+                      data2.taskNumber = n;
+                      // eslint-disable-next-line no-await-in-loop
+                      await set(ref(db, newKey2), data2);
+                      // eslint-disable-next-line no-await-in-loop
+                      await set(ref(db, oldKey2), null);
+                    }
+                  }
+                }
               }
             }
-            // Запускаем проверку и сохранение
-            trySaveTaskWithCheck();
+            // --- КОНЕЦ ВСТАВКИ МЕЖДУ ---
+            const teamColor = isTeamWork ? "cyan" : null;
+            const { dateRange } = getWeekDateRange(weekOffset);
+            const rowIndex = parseInt(targetDay);
+            const colIndex = names.indexOf(targetName1);
+            // 2. Сохраняем задачу во временную ячейку в базе
+            const tempTask = {
+              checked: false,
+              name: targetName1,
+              day: dayNames[rowIndex],
+              taskNumber: insertNumber,
+              address: address,
+              code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
+              phones: phones,
+              reason: reason,
+              comments: comments,
+              teamColor: teamColor,
+            };
+            await set(ref(db, "notes/tempTask"), tempTask);
+            // 3. После успешной записи — читаем из tempTask и сохраняем в нужное место
+            const tempSnap = await get(ref(db, "notes/tempTask"));
+            if (tempSnap.exists()) {
+              const dataToSave = tempSnap.val();
+              const dbKey = `notes/${dateRange}/${rowIndex}/${colIndex}/${insertNumber}`;
+              await set(ref(db, dbKey), dataToSave);
+              if (isTeamWork) {
+                const colIndex2 = names.indexOf(targetName2);
+                if (colIndex2 !== -1) {
+                  const dbKey2 = `notes/${dateRange}/${rowIndex}/${colIndex2}/${insertNumber}`;
+                  await set(ref(db, dbKey2), {
+                    ...dataToSave,
+                    name: targetName2,
+                  });
+                }
+              }
+              // Очищаем tempTask
+              await set(ref(db, "notes/tempTask"), null);
+              showNotification('משימה נשמרה בהצלחה');
+              reloadTasksForWeek();
+            }
           });
 
         document.getElementById("team-work").addEventListener("change", () => {
@@ -798,6 +709,27 @@
 
         // Add clear all fields button handler
         document.getElementById('clear-all-fields').addEventListener('click', clearAllFields);
+
+        document.getElementById('insert-between-checkbox').addEventListener('change', function() {
+          const betweenFields = document.getElementById('insert-between-fields');
+          if (this.checked) {
+            betweenFields.style.display = 'flex';
+            document.getElementById('target-number').disabled = true;
+          } else {
+            betweenFields.style.display = 'none';
+            document.getElementById('target-number').disabled = false;
+          }
+        });
+        document.getElementById('between-task1').addEventListener('change', function() {
+          const val = parseInt(this.value);
+          const task2 = document.getElementById('between-task2');
+          for (let i = 0; i < task2.options.length; i++) {
+            task2.options[i].disabled = parseInt(task2.options[i].value) <= val;
+          }
+          if (parseInt(task2.value) <= val) {
+            task2.value = (val + 1).toString();
+          }
+        });
       });
 
       function fillAdminPanelWithTaskData(taskData, dbKey, rowIndex, colIndex, taskNumber) {
@@ -897,7 +829,6 @@
         document.getElementById('single-panel').dataset.rowIndex = rowIndex;
         document.getElementById('single-panel').dataset.colIndex = colIndex;
         document.getElementById('single-panel').dataset.taskNumber = taskNumber;
-        document.getElementById('single-panel').dataset.isEditing = 'true';
         
         // Показываем уведомление
         showNotification('המשימה נטענה לעריכה. שנה את הנתונים ולחץ על "שמור משימה"');
@@ -1124,7 +1055,6 @@
         document.getElementById('single-panel').dataset.rowIndex = '';
         document.getElementById('single-panel').dataset.colIndex = '';
         document.getElementById('single-panel').dataset.taskNumber = '';
-        document.getElementById('single-panel').dataset.isEditing = 'false';
         
         showNotification('כל השדות נוקו');
       }
@@ -1177,8 +1107,8 @@
         const { printCode, printPhone, printComments } = opts;
         const { dateRange, sunday } = getWeekDateRange(weekOffset);
         const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
-        const names = ["טימור", "יעקב", "אלי", "טכנאי ביצוע"];
-        const taskNumbers = [1, 2, 3, 4, 5, 6, 7];
+        const names = ["טימור", "יעקב", "עופר", "טכנאי ביצוע"];
+        const taskNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         const colIndex = names.indexOf(name);
         if (colIndex === -1) {
           alert('שם לא תקין');
@@ -1233,7 +1163,7 @@
             <img src="utech.jpg" alt="Utech Logo" class="print-logo" />
             <div class="tasks-list">
         `;
-        tasks.slice(0, 7).forEach((task) => {
+        tasks.slice(0, 10).forEach((task) => {
           printHtml += `<div class="task-print-block">`;
           printHtml += `<div class="task-field"><span class="task-label">כתובת:</span> ${task.address || ''}</div>`;
           printHtml += `<div class="task-field"><span class="task-label">משימה:</span> ${task.reason || ''}</div>`;
@@ -1267,7 +1197,7 @@
       // === Замена задач между разными днями и сотрудниками ===
       async function swapTasks(day1Index, name1, task1, day2Index, name2, task2) {
         const { dateRange } = getWeekDateRange(weekOffset);
-        const names = ["טימור", "יעקב", "אלי", "טכנאי ביצוע"];
+        const names = ["טימור", "יעקב", "עופר", "טכנאי ביצוע"];
         const col1Index = names.indexOf(name1);
         const col2Index = names.indexOf(name2);
         
@@ -1357,6 +1287,11 @@
           alert("שגיאה בהחלפת המשימות");
         }
       }
+
+      // ... существующий код ...
+      // В обработчике single-insert вызываю debounceSaveTask без передачи reloadTasksForWeek и showNotification.
+      // ... существующий код ...
+
     </script>
     <script>
 
@@ -1389,7 +1324,7 @@
           <th class="day">יום</th>
           <th id="name-0">טימור</th>
           <th id="name-1">יעקב</th>
-          <th id="name-2">אלי</th>
+          <th id="name-2">עופר</th>
           <th id="name-3">טכנאי ביצוע</th>
           <th class="day-notes-header">הערות</th>
         </tr>
@@ -1439,7 +1374,7 @@
           <td></td>
           <td>טימור</td>
           <td>יעקב</td>
-          <td>אלי</td>
+          <td>עופר</td>
           <td>טכנאי ביצוע</td>
           <td></td>
         </tr>
@@ -1454,7 +1389,7 @@
             <option value="">בחר שם</option>
             <option>טימור</option>
             <option>יעקב</option>
-            <option>אלי</option>
+            <option>עופר</option>
             <option>טכנאי ביצוע</option>
           </select>
           <div class="checkbox-container">
@@ -1471,7 +1406,7 @@
               <option value="">בחר שם</option>
               <option>טימור</option>
               <option>יעקב</option>
-              <option>אלי</option>
+              <option>עופר</option>
               <option>טכנאי ביצוע</option>
             </select>
           </div>
@@ -1488,10 +1423,32 @@
           <option value="4">חמישי</option>
         </select>
       </label>
-      <label
-        >מספר משימה:<span class="required">*</span>
-        <select id="target-number" required>
-          <option value="">בחר מספר</option>
+      <label style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+        <span>מספר משימה:<span class="required">*</span></span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <select id="target-number" required style="width: 370px;">
+            <option value="">בחר מספר</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+          </select>
+          <div class="checkbox-container" style="display: flex; align-items: center; gap: 4px;">
+            <input type="checkbox" id="insert-between-checkbox" />
+            <label for="insert-between-checkbox" style="font-size: 0.95em;">הוספה בין משימות</label>
+          </div>
+        </div>
+      </label>
+      <div id="insert-between-fields"
+           style="display: none; margin-bottom: 8px; gap: 8px; flex-direction: row; align-items: center; font-size: 0.95em;">
+        <span>בין</span>
+        <select id="between-task1" style="width: 48px; min-width: 48px;">
           <option value="1">1</option>
           <option value="2">2</option>
           <option value="3">3</option>
@@ -1499,8 +1456,22 @@
           <option value="5">5</option>
           <option value="6">6</option>
           <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
         </select>
-      </label>
+        <span>ו</span>
+        <select id="between-task2" style="width: 48px; min-width: 48px;">
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+        </select>
+      </div>
       <label
         >כתובת:<span class="required">*</span>
         <input type="text" id="task-address" required placeholder="📬 הזן כתובת" />
@@ -1555,7 +1526,7 @@
           placeholder="📎 הזן הערות"
         ></textarea>
       </label>
-      <button id="single-insert">💾 שמור משימה</button>
+      <button id="single-insert">�� שמור משימה</button>
       <button id="clear-all-fields">🗑️ נקה את כל השדות</button>
       <button id="print-day-tasks">🖨️ הדפס משימות</button>
       <button id="swap-tasks">🔄 החלף משימות</button>
@@ -1589,7 +1560,7 @@
           <select id="print-name-select">
             <option value="טימור">טימור</option>
             <option value="יעקב">יעקב</option>
-            <option value="אלי">אלי</option>
+            <option value="עופר">עופר</option>
             <option value="טכנאי ביצוע">טכנאי ביצוע</option>
           </select>
         </label>
@@ -1625,7 +1596,7 @@
               <select id="swap-name1-select">
                 <option value="טימור">טימור</option>
                 <option value="יעקב">יעקב</option>
-                <option value="אלי">אלי</option>
+                <option value="עופר">עופר</option>
                 <option value="טכנאי ביצוע">טכנאי ביצוע</option>
               </select>
             </label>
@@ -1638,6 +1609,9 @@
                 <option value="5">5</option>
                 <option value="6">6</option>
                 <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
               </select>
             </label>
           </div>
@@ -1656,7 +1630,7 @@
               <select id="swap-name2-select">
                 <option value="טימור">טימור</option>
                 <option value="יעקב">יעקב</option>
-                <option value="אלי">אלי</option>
+                <option value="עופר">עופר</option>
                 <option value="טכנאי ביצוע">טכנאי ביצוע</option>
               </select>
             </label>
@@ -1669,6 +1643,9 @@
                 <option value="5">5</option>
                 <option value="6">6</option>
                 <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
               </select>
             </label>
           </div>
