@@ -5,6 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>טבלת משימות UTECH</title>
     <link rel="icon" href="logo.jpg" type="image/jpeg" />
+    <style>
+      /* Task Fullscreen Modal Animation */
+      #task-fullscreen-overlay {
+        animation: overlayFadeIn 0.4s cubic-bezier(.4,0,.2,1);
+      }
+      @keyframes overlayFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      #task-fullscreen-content {
+        opacity: 0;
+        transform: translateY(-40px) scale(0.96);
+        animation: contentFadeIn 0.4s cubic-bezier(.4,0,.2,1) forwards;
+      }
+      @keyframes contentFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(-40px) scale(0.96);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+    </style>
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
       import {
@@ -1302,11 +1327,88 @@
           overlay.remove();
         }
       }
+      
+      // Moon phase functionality from script.js
+      function getMoonPhase(date) {
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+
+        let lp = 2551443;
+        let now = new Date(year, month - 1, day);
+        let newMoon = new Date(1970, 0, 7, 20, 35, 0);
+        let phase = ((now.getTime() - newMoon.getTime()) / 1000) % lp;
+        let age = Math.floor(phase / (24 * 3600));
+
+        if (age === 0 || age === 29) return "🌑";
+        else if (age >= 1 && age <= 6) return "🌒";
+        else if (age === 7 || age === 8) return "🌓";
+        else if (age >= 9 && age <= 13) return "🌔";
+        else if (age === 14 || age === 15) return "🌕";
+        else if (age >= 16 && age <= 20) return "🌖";
+        else if (age === 21 || age === 22) return "🌗";
+        else if (age >= 23 && age <= 28) return "🌘";
+        else return "🌑";
+      }
+
+      // Initialize moon phase if element exists
+      const moonPhaseElement = document.getElementById('moonPhase');
+      const today = new Date();
+      if (moonPhaseElement) {
+        moonPhaseElement.textContent = getMoonPhase(today);
+        
+        // Audio functionality for moon phase
+        const audio = new Audio('assets/pgHUB/bansuka.mp3');
+        let canPlay = true;
+        
+        moonPhaseElement.addEventListener('click', () => {
+          if (canPlay) {
+            audio.currentTime = 0;
+            audio.play().catch(err => console.log('Audio play failed:', err));
+            canPlay = false;
+
+            setTimeout(() => {
+              canPlay = true;
+            }, 7500);
+          }
+        });
+      }
+      
+      // Video overlay functionality
+      const videoButton = document.getElementById('videoButton');
+      const videoOverlay = document.getElementById('videoOverlay');
+      const loloVideo = document.getElementById('loloVideo');
+      let canPlayVideo = true;
+
+      if (videoButton && videoOverlay && loloVideo) {
+        videoButton.addEventListener('click', () => {
+          if (canPlayVideo) {
+            videoOverlay.style.display = 'block';
+            loloVideo.play().catch(err => console.log('Video play failed:', err));
+            canPlayVideo = false;
+
+            setTimeout(() => {
+              canPlayVideo = true;
+            }, 15000);
+          }
+        });
+
+        loloVideo.addEventListener('ended', () => {
+          videoOverlay.style.display = 'none';
+          loloVideo.currentTime = 0;
+        });
+
+        loloVideo.addEventListener('click', () => {
+          videoOverlay.style.display = 'none';
+          loloVideo.pause();
+          loloVideo.currentTime = 0;
+        });
+      }
     </script>
   </head>
   <body>
     <img src="utech.jpg" alt="Utech Logo" class="header-image" />
-    <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+    <div class="week-controls" style="display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
       <button id="next-week" style="font-size: 1em; margin: 0 5px; padding: 2px 8px;">→</button>
       <span id="week-range" style="font-weight: bold; min-width: 140px; text-align: center;"></span>
       <button id="prev-week" style="font-size: 1em; margin: 0 5px; padding: 2px 8px;">←</button>
@@ -1666,6 +1768,81 @@
     margin: 0;
     position: relative;
   }
+  
+  @media (max-width: 600px) {
+    * {
+      user-select: none;
+      -webkit-user-select: none; /* iOS */
+      -ms-user-select: none;
+    }
+  }
+  
+  /* Smooth fade-in from top animation */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(-30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Apply animations to elements in order - elements start hidden and fade in */
+  .header-image {
+    opacity: 0;
+    animation: fadeInUp 0.6s ease-out 0s forwards;
+  }
+  
+  .week-controls {
+    opacity: 0;
+    animation: fadeInUp 0.6s ease-out 0.15s forwards;
+  }
+  
+  #day-select {
+    opacity: 0;
+    animation: fadeInUp 0.6s ease-out 0.3s forwards;
+  }
+  
+  #schedule-table {
+    opacity: 0;
+    animation: fadeInUp 0.6s ease-out 0.45s forwards;
+  }
+  
+  #schedule-table tbody tr {
+    opacity: 0;
+    animation: fadeInUp 0.5s ease-out forwards;
+  }
+  
+  #schedule-table tbody tr:nth-child(1) {
+    animation-delay: 0.6s;
+  }
+  
+  #schedule-table tbody tr:nth-child(2) {
+    animation-delay: 0.75s;
+  }
+  
+  #schedule-table tbody tr:nth-child(3) {
+    animation-delay: 0.9s;
+  }
+  
+  #schedule-table tbody tr:nth-child(4) {
+    animation-delay: 1.05s;
+  }
+  
+  #schedule-table tbody tr:nth-child(5) {
+    animation-delay: 1.2s;
+  }
+  
+  #schedule-table tbody tr:nth-child(6) {
+    animation-delay: 1.35s;
+  }
+  
+  #single-panel {
+    opacity: 0;
+    animation: fadeInUp 0.6s ease-out 1.5s forwards;
+  }
   .header-image {
     width: 100%;
     max-width: 300px;
@@ -1673,6 +1850,11 @@
     object-fit: contain;
     display: block;
     margin: 10px auto;
+    transition: transform 0.2s;
+  }
+  
+  .header-image:hover {
+    transform: scale(1.02);
   }
   table {
     border-collapse: collapse;
@@ -1735,9 +1917,15 @@
     max-width: 200px;
     white-space: pre-line;
     font-size: 0.9em;
+    opacity: 0;
+    transform: translateY(-5px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
   }
   label:hover .tooltip {
     display: block;
+    opacity: 1;
+    transform: translateY(0);
   }
   #day-select {
     display: block;
@@ -1783,6 +1971,15 @@
     font-size: 0.9em;
     width: 100%;
     margin-bottom: 5px;
+    transition: transform 0.2s, background-color 0.2s ease;
+  }
+  
+  button:hover {
+    transform: scale(1.03);
+  }
+  
+  button:active {
+    transform: scale(0.98);
   }
   .required {
     color: red;
@@ -1812,6 +2009,13 @@
     border: none;
     border-radius: 4px;
     margin: 5px 0;
+    transition: transform 0.2s, background-color 0.2s ease;
+    cursor: pointer;
+  }
+  
+  #add-phone:hover {
+    transform: scale(1.03);
+    background: rgba(131, 167, 55, 0.9);
   }
   .remove-phone {
     padding: 5px;
@@ -1822,6 +2026,13 @@
     border: none;
     border-radius: 4px;
     margin-right: 5px;
+    transition: transform 0.2s, background-color 0.2s ease;
+    cursor: pointer;
+  }
+  
+  .remove-phone:hover {
+    transform: scale(1.03);
+    background: rgba(255, 68, 68, 0.9);
   }
   #task-overlay {
     display: none;
@@ -1898,6 +2109,12 @@
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s ease;
+  }
+  
+  #back-cancel:hover {
+    transform: scale(1.03);
+    background: rgba(131, 167, 55, 0.9);
   }
   #codes-section {
     margin-bottom: 8px;
@@ -2548,5 +2765,169 @@
     border-top: 2px solid #ccc;
     background-color: #83a737;
     color: white;
+  }
+  
+  /* Moon phase styles and animations */
+  .moon-phase {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    transition: transform 0.2s;
+    display: inline-block;
+  }
+  
+  .moon-phase:hover {
+    transform: scale(1.1);
+  }
+  
+  /* Enhanced button animations */
+  #single-insert,
+  #clear-all-fields,
+  #print-day-tasks,
+  #swap-tasks,
+  #print-modal-confirm,
+  #print-modal-cancel,
+  #swap-modal-confirm,
+  #swap-modal-cancel {
+    transition: transform 0.2s, background-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  }
+  
+  #single-insert:hover,
+  #clear-all-fields:hover,
+  #print-day-tasks:hover,
+  #swap-tasks:hover,
+  #print-modal-confirm:hover,
+  #swap-modal-confirm:hover {
+    transform: scale(1.03);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.5);
+  }
+  
+  #print-modal-cancel:hover,
+  #swap-modal-cancel:hover {
+    transform: scale(1.03);
+  }
+  
+  /* Link card animations */
+  .link-card {
+    transition: transform 0.2s, background-color 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  }
+  
+  .link-card:hover {
+    transform: scale(1.03);
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Select and input transitions */
+  select,
+  input[type="text"],
+  input[type="tel"],
+  textarea {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  select:focus,
+  input[type="text"]:focus,
+  input[type="tel"]:focus,
+  textarea:focus {
+    outline: none;
+    border-color: #83a737;
+    box-shadow: 0 0 0 2px rgba(131, 167, 55, 0.2);
+  }
+  
+  /* Table cell hover effects */
+  .checkboxes label {
+    transition: transform 0.2s, background-color 0.2s ease;
+  }
+  
+  .checkboxes label:hover {
+    transform: scale(1.05);
+  }
+  
+  /* Smooth fade-in for dynamically loaded content */
+  .checkboxes {
+    animation: fadeInUp 0.4s ease-out forwards;
+    opacity: 0;
+  }
+  
+  /* Stagger animation for table columns */
+  #schedule-table thead th {
+    opacity: 0;
+    animation: fadeInUp 0.5s ease-out forwards;
+  }
+  
+  #schedule-table thead th:nth-child(1) { animation-delay: 0.5s; }
+  #schedule-table thead th:nth-child(2) { animation-delay: 0.55s; }
+  #schedule-table thead th:nth-child(3) { animation-delay: 0.6s; }
+  #schedule-table thead th:nth-child(4) { animation-delay: 0.65s; }
+  #schedule-table thead th:nth-child(5) { animation-delay: 0.7s; }
+  #schedule-table thead th:nth-child(6) { animation-delay: 0.75s; }
+  
+  /* Week navigation buttons */
+  #next-week,
+  #prev-week {
+    transition: transform 0.2s, background-color 0.2s ease;
+    cursor: pointer;
+  }
+  
+  #next-week:hover,
+  #prev-week:hover {
+    transform: scale(1.1);
+  }
+  
+  /* Link color transitions */
+  a {
+    transition: color 0.2s ease, text-decoration 0.2s ease;
+  }
+  
+  a:hover {
+    color: #fff;
+    text-decoration: underline;
+  }
+  
+  /* Smooth transitions for all interactive elements */
+  .call-phone-btn,
+  .close-fullscreen-btn,
+  .delete-task-btn,
+  .day-notes-save-btn,
+  .mobile-notes-save-btn {
+    transition: transform 0.2s, background-color 0.2s ease, color 0.2s ease;
+  }
+  
+  .call-phone-btn:hover,
+  .close-fullscreen-btn:hover,
+  .delete-task-btn:hover,
+  .day-notes-save-btn:hover,
+  .mobile-notes-save-btn:hover {
+    transform: scale(1.05);
+  }
+  
+  /* Tooltip smooth appearance */
+  .tooltip {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  
+  label:hover .tooltip {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+  /* Modal overlay smooth transitions */
+  #print-modal,
+  #swap-modal,
+  #task-overlay,
+  #back-confirm-overlay {
+    transition: opacity 0.3s ease;
+  }
+  
+  /* Table header hover effect */
+  th {
+    transition: background-color 0.2s ease;
+  }
+  
+  th:hover {
+    background-color: rgba(131, 167, 55, 0.9);
   }
 </style>
