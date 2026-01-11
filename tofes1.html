@@ -208,6 +208,116 @@ ul.suggestions li:hover {
   margin-top: 15px;
 }
 
+/* ===== Success Overlay Animation ===== */
+.success-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 0;
+  animation: overlayFadeIn 0.5s ease-out forwards;
+}
+
+@keyframes overlayFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.success-checkmark {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 30px;
+  animation: checkmarkPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.3s forwards;
+  transform: scale(0);
+}
+
+@keyframes checkmarkPop {
+  0% {
+    transform: scale(0) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.2) rotate(180deg);
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+  }
+}
+
+.checkmark-icon {
+  font-size: 60px;
+  color: #4caf50;
+  animation: checkmarkDraw 0.4s ease-out 0.6s forwards;
+  opacity: 0;
+}
+
+@keyframes checkmarkDraw {
+  to {
+    opacity: 1;
+  }
+}
+
+.success-text {
+  color: white;
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  animation: textSlideUp 0.5s ease-out 0.8s forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+@keyframes textSlideUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.success-subtext {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 16px;
+  animation: textSlideUp 0.5s ease-out 1s forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.confetti {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #ffd700;
+  animation: confettiFall 3s linear forwards;
+}
+
+@keyframes confettiFall {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
 </style>
 </head>
 
@@ -228,6 +338,11 @@ ul.suggestions li:hover {
 <option>יהונתן</option>
 <option>איציק</option>
 </select>
+</div>
+
+<div class="form-group">
+<label>תאריך <span class="required">*</span></label>
+<input type="date" id="workDate" required>
 </div>
 
 <div class="form-group">
@@ -265,15 +380,52 @@ ul.suggestions li:hover {
 <div id="message"></div>
 </div>
 
-<script>
+<script type="module">
+/* ===== Firebase Setup ===== */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDuvwDMAsyQSURluc7Mr-Ow5r2Iq2xh9P8",
+  authDomain: "tofes-43c54.firebaseapp.com",
+  databaseURL: "https://tofes-43c54-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "tofes-43c54",
+  storageBucket: "tofes-43c54.firebasestorage.app",
+  messagingSenderId: "634166786476",
+  appId: "1:634166786476:web:e5118489dcf3066fcba209",
+  measurementId: "G-WS6QJN5RCT"
+};
+
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const database = getDatabase(app);
+
 /* ===== Storage helpers ===== */
 async function saveReport(data) {
   try {
-    const key = `report:${Date.now()}`;
-    await window.storage.set(key, JSON.stringify(data));
+    console.log('Saving report to Firebase...');
+    
+    const workerName = data.workerName;
+    const workDate = data.workDate;
+    const address = data.address;
+    
+    // Structure: workLogs/{workerName}/{date}/{address}/{reportData}
+    const reportPath = `workLogs/${workerName}/${workDate}/${address}`;
+    const reportRef = ref(database, reportPath);
+    
+    await set(reportRef, {
+      floors: data.floors,
+      equipment: data.equipment,
+      issues: data.issues,
+      nextVisit: data.nextVisit,
+      timestamp: data.timestamp
+    });
+    
+    console.log('Saved successfully to Firebase at:', reportPath);
     return true;
   } catch (err) {
-    console.error('Error saving:', err);
+    console.error('Error saving to Firebase:', err);
     return false;
   }
 }
@@ -285,17 +437,30 @@ const GEOAPIFY_API_KEY = 'e8865b54fc1b42bb93563ff017f253af';
 
 input.addEventListener('input', async () => {
   const query = input.value;
-  if (!query) {
+  if (!query || query.length < 2) {
     suggestionsList.innerHTML = '';
     return;
   }
 
   try {
-    const response = await fetch(`https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&filter=countrycode:il&lang=he&limit=5&apiKey=${GEOAPIFY_API_KEY}`);
+    const response = await fetch(`https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&filter=countrycode:il&lang=he&limit=10&apiKey=${GEOAPIFY_API_KEY}`);
     const data = await response.json();
 
     suggestionsList.innerHTML = '';
-    data.features.forEach(feature => {
+    
+    // Check if data.features exists
+    if (!data.features || data.features.length === 0) {
+      suggestionsList.innerHTML = '<li style="color: #999; pointer-events: none;">לא נמצאו תוצאות</li>';
+      return;
+    }
+    
+    // Filter only addresses with house numbers
+    const validAddresses = data.features.filter(feature => {
+      const props = feature.properties;
+      return props.housenumber && props.street;
+    });
+
+    validAddresses.forEach(feature => {
       const props = feature.properties;
       const street = props.street || '';
       const housenumber = props.housenumber || '';
@@ -311,8 +476,13 @@ input.addEventListener('input', async () => {
       });
       suggestionsList.appendChild(li);
     });
+    
+    if (validAddresses.length === 0) {
+      suggestionsList.innerHTML = '<li style="color: #999; pointer-events: none;">לא נמצאו כתובות עם מספרי בית</li>';
+    }
   } catch (err) {
     console.error('Autocomplete error:', err);
+    suggestionsList.innerHTML = '<li style="color: #999; pointer-events: none;">שגיאה בחיפוש כתובות</li>';
   }
 });
 
@@ -321,11 +491,12 @@ const floorGrid = document.getElementById("floorGrid");
 const floorWorkContainer = document.getElementById("floorWorkContainer");
 const activeFloors = new Map();
 
+// Create floor chips
 for (let i = -5; i <= 20; i++) {
   const chip = document.createElement("div");
   chip.className = "floor-chip";
   chip.textContent = i;
-  chip.onclick = () => toggleFloor(i, chip);
+  chip.addEventListener('click', () => toggleFloor(i, chip));
   floorGrid.appendChild(chip);
 }
 
@@ -355,6 +526,9 @@ function toggleFloor(floor, chip) {
   }
 }
 
+// Make toggleFloor available globally
+window.toggleFloor = toggleFloor;
+
 /* ===== Equipment ===== */
 function addEquipment() {
   const div = document.createElement("div");
@@ -362,14 +536,28 @@ function addEquipment() {
   div.innerHTML = `
     <input type="text" placeholder="שם פריט" class="equipment-name">
     <input type="number" placeholder="כמות" class="equipment-quantity">
-    <button type="button" class="remove-equipment" onclick="this.parentElement.remove()">✕</button>
+    <button type="button" class="remove-equipment">✕</button>
   `;
+  
+  // Add remove listener
+  div.querySelector('.remove-equipment').addEventListener('click', function() {
+    this.parentElement.remove();
+  });
+  
   document.getElementById("equipmentList").appendChild(div);
 }
+
+// Make addEquipment available globally
+window.addEquipment = addEquipment;
+
+/* ===== Set today's date by default ===== */
+document.getElementById('workDate').valueAsDate = new Date();
 
 /* ===== Form submission ===== */
 document.getElementById('workForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  
+  console.log('Form submitted!');
   
   const messageDiv = document.getElementById('message');
   
@@ -399,6 +587,7 @@ document.getElementById('workForm').addEventListener('submit', async (e) => {
   
   const formData = {
     workerName: document.getElementById('workerName').value,
+    workDate: document.getElementById('workDate').value,
     address: document.getElementById('address').value,
     floors: floorWork,
     equipment: equipment,
@@ -407,19 +596,53 @@ document.getElementById('workForm').addEventListener('submit', async (e) => {
     timestamp: new Date().toISOString()
   };
   
+  console.log('Form data:', formData);
+  
   const success = await saveReport(formData);
   
+  console.log('Save result:', success);
+  
   if (success) {
-    messageDiv.innerHTML = '<div class="success-message">הדוח נשמר בהצלחה! ✓</div>';
+    // Create success overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'success-overlay';
+    overlay.innerHTML = `
+      <div class="success-checkmark">
+        <div class="checkmark-icon">✓</div>
+      </div>
+      <div class="success-text">!הדוח נשמר בהצלחה</div>
+      <div class="success-subtext">הנתונים נשמרו במערכת</div>
+    `;
+    
+    // Add confetti
+    for (let i = 0; i < 50; i++) {
+      const confetti = document.createElement('div');
+      confetti.className = 'confetti';
+      confetti.style.left = Math.random() * 100 + '%';
+      confetti.style.background = ['#ffd700', '#ff6b6b', '#4ecdc4', '#45b7d1', '#f7b731'][Math.floor(Math.random() * 5)];
+      confetti.style.animationDelay = Math.random() * 0.5 + 's';
+      confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+      overlay.appendChild(confetti);
+    }
+    
+    document.body.appendChild(overlay);
+    
+    // Check what's in localStorage
+    console.log('Data saved to Firebase!');
+    
     setTimeout(() => {
-      messageDiv.innerHTML = '';
-      document.getElementById('workForm').reset();
-      activeFloors.clear();
-      document.querySelectorAll('.floor-chip').forEach(chip => chip.classList.remove('active'));
-      floorWorkContainer.innerHTML = '';
-      document.getElementById('equipmentList').innerHTML = '';
-      suggestionsList.innerHTML = '';
-    }, 2000);
+      overlay.style.animation = 'overlayFadeIn 0.5s ease-out reverse';
+      setTimeout(() => {
+        overlay.remove();
+        document.getElementById('workForm').reset();
+        document.getElementById('workDate').valueAsDate = new Date();
+        activeFloors.clear();
+        document.querySelectorAll('.floor-chip').forEach(chip => chip.classList.remove('active'));
+        floorWorkContainer.innerHTML = '';
+        document.getElementById('equipmentList').innerHTML = '';
+        suggestionsList.innerHTML = '';
+      }, 500);
+    }, 2500);
   } else {
     messageDiv.innerHTML = '<div class="error-message">שגיאה בשמירת הדוח. נסה שוב.</div>';
     setTimeout(() => messageDiv.innerHTML = '', 3000);
