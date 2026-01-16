@@ -2910,11 +2910,17 @@
   }
   
   .header-nav {
-  display: flex;
+  display: none;
   justify-content: space-between;
   align-items: center;
   max-width: 800px;
   margin: 0 auto 20px auto;
+}
+
+@media (min-width: 769px) {
+  .header-nav {
+    display: flex;
+  }
 }
 
 .nav-btn {
