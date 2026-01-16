@@ -1407,6 +1407,7 @@
     </script>
   </head>
   <body>
+    <img src="utech.jpg" alt="Utech" class="logo-mobile">
     <div class="header-nav">
       <a href="tofes.html" class="nav-btn">למילוי היומן</a>
       <img src="utech.jpg" alt="Utech" class="logo">
@@ -2917,9 +2918,20 @@
   margin: 0 auto 20px auto;
 }
 
+.logo-mobile {
+  display: block;
+  max-width: 200px;
+  height: auto;
+  margin: 0 auto 15px auto;
+}
+
 @media (min-width: 769px) {
   .header-nav {
     display: flex;
+  }
+  
+  .logo-mobile {
+    display: none;
   }
 }
 
