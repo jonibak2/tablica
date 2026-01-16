@@ -1407,7 +1407,12 @@
     </script>
   </head>
   <body>
-    <img src="utech.jpg" alt="Utech Logo" class="header-image" />
+    <div class="header-nav">
+      <a href="tofes.html" class="nav-btn">למילוי היומן</a>
+      <img src="utech.jpg" alt="Utech" class="logo">
+      <a href="view.html" class="nav-btn">ליומנים</a>
+    </div>
+
     <div class="week-controls" style="display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
       <button id="next-week" style="font-size: 1em; margin: 0 5px; padding: 2px 8px;">→</button>
       <span id="week-range" style="font-weight: bold; min-width: 140px; text-align: center;"></span>
@@ -2904,6 +2909,39 @@
     transform: scale(1.05);
   }
   
+  .header-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 800px;
+  margin: 0 auto 20px auto;
+}
+
+.nav-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  background: #83a737;
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.nav-btn:hover {
+  background: #6d8c2f;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(131, 167, 55, 0.3);
+}
+
+.logo {
+  max-width: 200px;
+  height: auto;
+}
+
   /* Tooltip smooth appearance */
   .tooltip {
     transition: opacity 0.2s ease, transform 0.2s ease;

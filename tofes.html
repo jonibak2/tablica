@@ -14,6 +14,40 @@ body {
   margin: 0;
 }
 
+.header-nav {
+  display: none;
+  max-width: 600px;
+  margin: 0 auto 20px auto;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nav-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: #83a737;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.nav-btn:hover {
+  background: #6d8c2f;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(131, 167, 55, 0.3);
+}
+
+@media (min-width: 769px) {
+  .header-nav {
+    display: flex;
+  }
+}
+
 .container {
   max-width: 600px;
   margin: auto;
@@ -92,7 +126,7 @@ ul.suggestions li:hover {
 /* ===== Floors grid ===== */
 .floor-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
   gap: 6px;
 }
 
@@ -323,6 +357,12 @@ ul.suggestions li:hover {
 
 <body>
 
+<div class="header-nav">
+  <a href="view.html" class="nav-btn">ליומנים</a>
+  <div style="flex: 1;"></div>
+  <a href="index.html" class="nav-btn">סידור עבודה</a>
+</div>
+
 <div class="container">
 <img src="utech.jpg" alt="Utech" class="logo">
 
@@ -492,7 +532,7 @@ const floorWorkContainer = document.getElementById("floorWorkContainer");
 const activeFloors = new Map();
 
 // Create floor chips
-for (let i = -5; i <= 20; i++) {
+for (let i = -5; i <= 40; i++) {
   const chip = document.createElement("div");
   chip.className = "floor-chip";
   chip.textContent = i;
