@@ -55,7 +55,7 @@
       const db = getDatabase(app);
 
       const isAdmin = { status: false };
-      const names = ["טימור", "יעקב", "עופר", "טכנאי ביצוע"];
+      const names = ["טימור", "שי", "פאבל", "איציק"];
       const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
       const teamColors = ["cyan"];
       const taskNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -1132,7 +1132,7 @@
         const { printCode, printPhone, printComments } = opts;
         const { dateRange, sunday } = getWeekDateRange(weekOffset);
         const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
-        const names = ["טימור", "יעקב", "עופר", "טכנאי ביצוע"];
+        const names = ["טימור", "שי", "פאבל", "איציק"];
         const taskNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         const colIndex = names.indexOf(name);
         if (colIndex === -1) {
@@ -1222,7 +1222,7 @@
       // === Замена задач между разными днями и сотрудниками ===
       async function swapTasks(day1Index, name1, task1, day2Index, name2, task2) {
         const { dateRange } = getWeekDateRange(weekOffset);
-        const names = ["טימור", "יעקב", "עופר", "טכנאי ביצוע"];
+        const names = ["טימור", "שי", "פאבל", "איציק"];
         const col1Index = names.indexOf(name1);
         const col2Index = names.indexOf(name2);
         
@@ -1431,9 +1431,9 @@
         <tr>
           <th class="day">יום</th>
           <th id="name-0">טימור</th>
-          <th id="name-1">יעקב</th>
-          <th id="name-2">עופר</th>
-          <th id="name-3">טכנאי ביצוע</th>
+          <th id="name-1">שי</th>
+          <th id="name-2">פאבל</th>
+          <th id="name-3">איציק</th>
           <th class="day-notes-header">הערות</th>
         </tr>
       </thead>
@@ -1481,9 +1481,9 @@
         <tr class="bottom-names-row">
           <td></td>
           <td>טימור</td>
-          <td>יעקב</td>
-          <td>עופר</td>
-          <td>טכנאי ביצוע</td>
+          <td>שי</td>
+          <td>פאבל</td>
+          <td>איציק</td>
           <td></td>
         </tr>
       </tbody>
@@ -1496,9 +1496,9 @@
           <select id="target-name" required>
             <option value="">בחר שם</option>
             <option>טימור</option>
-            <option>יעקב</option>
-            <option>עופר</option>
-            <option>טכנאי ביצוע</option>
+            <option>שי</option>
+            <option>פאבל</option>
+            <option>איציק</option>
           </select>
           <div class="checkbox-container">
             <input type="checkbox" id="team-work" />
@@ -1513,9 +1513,9 @@
             <select id="target-name-2" required>
               <option value="">בחר שם</option>
               <option>טימור</option>
-              <option>יעקב</option>
-              <option>עופר</option>
-              <option>טכנאי ביצוע</option>
+              <option>שי</option>
+              <option>פאבל</option>
+              <option>איציק</option>
             </select>
           </div>
         </label>
@@ -1667,9 +1667,9 @@
         <label>עובד:
           <select id="print-name-select">
             <option value="טימור">טימור</option>
-            <option value="יעקב">יעקב</option>
-            <option value="עופר">עופר</option>
-            <option value="טכנאי ביצוע">טכנאי ביצוע</option>
+            <option value="שי">שי</option>
+            <option value="פאבל">פאבל</option>
+            <option value="איציק">איציק</option>
           </select>
         </label>
         <div style="margin: 12px 0 8px 0; display: flex; flex-direction: column; align-items: center;">
@@ -1703,9 +1703,9 @@
             <label>עובד:
               <select id="swap-name1-select">
                 <option value="טימור">טימור</option>
-                <option value="יעקב">יעקב</option>
-                <option value="עופר">עופר</option>
-                <option value="טכנאי ביצוע">טכנאי ביצוע</option>
+                <option value="שי">שי</option>
+                <option value="פאבל">פאבל</option>
+                <option value="איציק">איציק</option>
               </select>
             </label>
             <label>מספר משימה:
@@ -1737,9 +1737,9 @@
             <label>עובד:
               <select id="swap-name2-select">
                 <option value="טימור">טימור</option>
-                <option value="יעקב">יעקב</option>
-                <option value="עופר">עופר</option>
-                <option value="טכנאי ביצוע">טכנאי ביצוע</option>
+                <option value="שי">שי</option>
+                <option value="פאבל">פאבל</option>
+                <option value="איציק">איציק</option>
               </select>
             </label>
             <label>מספר משימה:
