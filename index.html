@@ -4,32 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>טבלת משימות UTECH</title>
-    <link rel="icon" href="logo.jpg" type="image/jpeg" />
-    <style>
-      /* Task Fullscreen Modal Animation */
-      #task-fullscreen-overlay {
-        animation: overlayFadeIn 0.4s cubic-bezier(.4,0,.2,1);
-      }
-      @keyframes overlayFadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-      #task-fullscreen-content {
-        opacity: 0;
-        transform: translateY(-40px) scale(0.96);
-        animation: contentFadeIn 0.4s cubic-bezier(.4,0,.2,1) forwards;
-      }
-      @keyframes contentFadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(-40px) scale(0.96);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
-      }
-    </style>
+    <link rel="icon" href="project/assets/logo.jpg" type="image/jpeg" />
+    <link rel="stylesheet" href="project/css/main.css" />
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
       import {
@@ -57,7 +33,6 @@
       const isAdmin = { status: false };
       const names = ["טימור", "שי", "פאבל", "איציק"];
       const dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
-      const teamColors = ["cyan"];
       const taskNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
       let isMobile = window.matchMedia("(max-width: 600px)").matches;
 
@@ -67,6 +42,7 @@
       let weekOffset = 0;
       const MIN_WEEK_OFFSET = -100;
       const MAX_WEEK_OFFSET = 100;
+      const weekOffsetMap = {};
 
       // Для хранения callback-ов подписок
       const checkboxListeners = {};
@@ -116,9 +92,6 @@
             if (data.checked) {
               label.style.background = '#d4f7d4';
               label.style.color = '#008000';
-            } else if (data.teamColor) {
-              label.style.background = '#e0f7fa';
-              label.style.color = '#00ced1';
             } else {
               label.style.background = '#fff';
               label.style.color = '#000';
@@ -141,19 +114,6 @@
             const data = snapshot.val() || {};
             await set(ref(db, dbKey), { ...data, checked: checkbox.checked });
 
-            // Если это командная задача — обновить и вторую
-            if (data.teamColor) {
-              for (let otherColIndex = 0; otherColIndex < names.length; otherColIndex++) {
-                if (otherColIndex !== colIndex) {
-                  const otherKey = `notes/${dateRange}/${rowIndex}/${otherColIndex}/${i + 1}`;
-                  const otherSnap = await get(ref(db, otherKey));
-                  const otherData = otherSnap.val();
-                  if (otherData && otherData.teamColor === data.teamColor) {
-                    await set(ref(db, otherKey), { ...otherData, checked: checkbox.checked });
-                  }
-                }
-              }
-            }
           });
 
           container.appendChild(label);
@@ -172,9 +132,7 @@
                   dateRange,
                   rowIndex,
                   colIndex,
-                  taskNumber: i + 1,
-                  isTeamWork: false,
-                  teamColor: null
+                  taskNumber: i + 1
                 });
               }
             }, 500);
@@ -192,9 +150,7 @@
                   dateRange,
                   rowIndex,
                   colIndex,
-                  taskNumber: i + 1,
-                  isTeamWork: false,
-                  teamColor: null
+                  taskNumber: i + 1
                 });
               }
             }, 500);
@@ -246,10 +202,7 @@
       }
 
       function resetAdminPanelCheckboxes() {
-        const checkboxes = [
-          "team-work",
-          "no-code-entry",
-        ];
+        const checkboxes = ["no-code-entry"];
         checkboxes.forEach((id) => {
           const checkbox = document.getElementById(id);
           if (checkbox) {
@@ -257,8 +210,7 @@
           }
         });
 
-        document.getElementById("target-name-2-container").style.display =
-          "none";
+        document.getElementById("target-name-2-container").style.display = "none";
 
         const codeInput = document.getElementById(`code-entry`);
         const optionsDiv = document.getElementById(`code-entry-options`);
@@ -310,6 +262,79 @@
         const { sunday, thursday } = getWeekDateRange(weekOffset);
         const weekRange = `${sunday.getDate().toString().padStart(2, '0')}.${(sunday.getMonth()+1).toString().padStart(2, '0')}.${sunday.getFullYear()} ${thursday.getDate().toString().padStart(2, '0')}.${(thursday.getMonth()+1).toString().padStart(2, '0')}.${thursday.getFullYear()}`;
         document.getElementById('week-range').innerText = weekRange;
+      }
+
+      function initWeekOffsetMap() {
+        for (let offset = MIN_WEEK_OFFSET; offset <= MAX_WEEK_OFFSET; offset++) {
+          const { dateRange } = getWeekDateRange(offset);
+          if (!weekOffsetMap[dateRange]) {
+            weekOffsetMap[dateRange] = offset;
+          }
+        }
+      }
+
+      function syncWeekSelect() {
+        const weekSelect = document.getElementById('week-select');
+        if (!weekSelect) return;
+        const { dateRange } = getWeekDateRange(weekOffset);
+        const hasOption = Array.from(weekSelect.options).some(opt => opt.value === dateRange);
+        weekSelect.value = hasOption ? dateRange : '';
+      }
+
+      async function loadAvailableWeeks() {
+        try {
+          const snapshot = await get(ref(db, 'notes'));
+          const notesData = snapshot.val() || {};
+          const dateRanges = Object.keys(notesData)
+            .filter(key => key !== 'tempTask' && weekOffsetMap.hasOwnProperty(key));
+
+          dateRanges.sort((a, b) => weekOffsetMap[a] - weekOffsetMap[b]);
+
+          const weekSelect = document.getElementById('week-select');
+          if (!weekSelect) return;
+
+          weekSelect.innerHTML = '';
+          const defaultOption = document.createElement('option');
+          defaultOption.value = '';
+          defaultOption.textContent = 'בחר שבוע';
+          weekSelect.appendChild(defaultOption);
+
+          dateRanges.forEach(dr => {
+            const offset = weekOffsetMap[dr];
+            const { sunday, thursday } = getWeekDateRange(offset);
+
+            const dd1 = String(sunday.getDate()).padStart(2, '0');
+            const mm1 = String(sunday.getMonth() + 1).padStart(2, '0');
+            const yyyy1 = sunday.getFullYear();
+
+            const dd2 = String(thursday.getDate()).padStart(2, '0');
+            const mm2 = String(thursday.getMonth() + 1).padStart(2, '0');
+            const yyyy2 = thursday.getFullYear();
+
+            const label = `${dd1}.${mm1}.${yyyy1} - ${dd2}.${mm2}.${yyyy2}`;
+
+            const option = document.createElement('option');
+            option.value = dr;
+            option.textContent = label;
+            option.title = dr;
+            weekSelect.appendChild(option);
+          });
+
+          syncWeekSelect();
+        } catch (error) {
+          console.error('Error loading available weeks:', error);
+        }
+      }
+
+      function setWeekOffset(newOffset) {
+        if (newOffset < MIN_WEEK_OFFSET || newOffset > MAX_WEEK_OFFSET) return;
+        weekOffset = newOffset;
+        updateWeekDisplay();
+        updateTableDates();
+        reloadTasksForWeek();
+        createDayNotesCells();
+        updateDayNotesDisplay();
+        syncWeekSelect();
       }
 
       function updateTableDates() {
@@ -502,6 +527,7 @@
       }
 
       document.addEventListener("DOMContentLoaded", () => {
+        initWeekOffsetMap();
         document.querySelectorAll(".cell").forEach((cell, i) => {
           const rowIndex = Math.floor(i / 4);
           const colIndex = i % 4;
@@ -513,11 +539,6 @@
         // Показываем/скрываем панель редактирования в зависимости от типа устройства
         document.getElementById("single-panel").style.display = !isMobile ? "block" : "none";
 
-        document.getElementById("team-work").addEventListener("change", () => {
-          document.getElementById("target-name-2-container").style.display =
-            document.getElementById("team-work").checked ? "block" : "none";
-        });
-
         setupPhoneEntries();
         setupCodeInputs();
 
@@ -525,9 +546,7 @@
           .getElementById("single-insert")
           .addEventListener("click", async () => {
             // 1. Собираем все значения формы
-            const isTeamWork = document.getElementById("team-work").checked;
             const targetName1 = document.getElementById("target-name").value;
-            const targetName2 = isTeamWork ? document.getElementById("target-name-2").value : null;
             const targetDay = document.getElementById("target-day").value;
             const targetNumber = document.getElementById("target-number").value;
             const address = document.getElementById("task-address").value.trim();
@@ -550,9 +569,6 @@
             };
             if (!targetName1 || !targetDay || !targetNumber || !address || !reason) {
               return alert("נא למלא את כל השדות");
-            }
-            if (isTeamWork && (!targetName2 || targetName1 === targetName2)) {
-              return alert("נא לבחור שני אנשים שונים לעבודת צוות");
             }
             if (!codes.entry.noCode && !codes.entry.code) {
               return alert("נא להזין קוד עבור כניסה או לסמן אין קוד");
@@ -585,28 +601,8 @@
                   await set(ref(db, oldKey), null);
                 }
               }
-              if (isTeamWork) {
-                const colIndex2 = names.indexOf(targetName2);
-                if (colIndex2 !== -1) {
-                  for (let n = 10; n >= between2 + 1; n--) {
-                    const oldKey2 = `notes/${dateRange}/${targetDay}/${colIndex2}/${n-1}`;
-                    const newKey2 = `notes/${dateRange}/${targetDay}/${colIndex2}/${n}`;
-                    // eslint-disable-next-line no-await-in-loop
-                    const snap2 = await get(ref(db, oldKey2));
-                    if (snap2.exists()) {
-                      const data2 = snap2.val();
-                      data2.taskNumber = n;
-                      // eslint-disable-next-line no-await-in-loop
-                      await set(ref(db, newKey2), data2);
-                      // eslint-disable-next-line no-await-in-loop
-                      await set(ref(db, oldKey2), null);
-                    }
-                  }
-                }
-              }
             }
             // --- КОНЕЦ ВСТАВКИ МЕЖДУ ---
-            const teamColor = isTeamWork ? "cyan" : null;
             const { dateRange } = getWeekDateRange(weekOffset);
             const rowIndex = parseInt(targetDay);
             const colIndex = names.indexOf(targetName1);
@@ -620,8 +616,7 @@
               code: codes.entry.noCode ? codes.entry.option : codes.entry.code,
               phones: phones,
               reason: reason,
-              comments: comments,
-              teamColor: teamColor,
+              comments: comments
             };
             await set(ref(db, "notes/tempTask"), tempTask);
             // 3. После успешной записи — читаем из tempTask и сохраняем в нужное место
@@ -630,16 +625,6 @@
               const dataToSave = tempSnap.val();
               const dbKey = `notes/${dateRange}/${rowIndex}/${colIndex}/${insertNumber}`;
               await set(ref(db, dbKey), dataToSave);
-              if (isTeamWork) {
-                const colIndex2 = names.indexOf(targetName2);
-                if (colIndex2 !== -1) {
-                  const dbKey2 = `notes/${dateRange}/${rowIndex}/${colIndex2}/${insertNumber}`;
-                  await set(ref(db, dbKey2), {
-                    ...dataToSave,
-                    name: targetName2,
-                  });
-                }
-              }
               // Очищаем tempTask
               await set(ref(db, "notes/tempTask"), null);
               showNotification('משימה נשמרה בהצלחה');
@@ -647,31 +632,32 @@
             }
           });
 
-        document.getElementById("team-work").addEventListener("change", () => {
-          document.getElementById("target-name-2-container").style.display =
-            document.getElementById("team-work").checked ? "block" : "none";
-        });
-
         document.getElementById('next-week').addEventListener('click', () => {
-          if (weekOffset < MAX_WEEK_OFFSET) {
-            weekOffset++;
-            updateWeekDisplay();
-            updateTableDates();
-            reloadTasksForWeek();
-            createDayNotesCells();
-            updateDayNotesDisplay();
+          if (weekOffset > MIN_WEEK_OFFSET) {
+            setWeekOffset(weekOffset - 1);
           }
         });
         document.getElementById('prev-week').addEventListener('click', () => {
-          if (weekOffset > MIN_WEEK_OFFSET) {
-            weekOffset--;
-            updateWeekDisplay();
-            updateTableDates();
-            reloadTasksForWeek();
-            createDayNotesCells();
-            updateDayNotesDisplay();
+          if (weekOffset < MAX_WEEK_OFFSET) {
+            setWeekOffset(weekOffset + 1);
           }
         });
+
+        const weekSelect = document.getElementById('week-select');
+        if (weekSelect) {
+          weekSelect.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (!val || !weekOffsetMap.hasOwnProperty(val)) return;
+            setWeekOffset(weekOffsetMap[val]);
+          });
+        }
+
+        const thisWeekBtn = document.getElementById('this-week');
+        if (thisWeekBtn) {
+          thisWeekBtn.addEventListener('click', () => {
+            setWeekOffset(0);
+          });
+        }
 
         const daySelect = document.getElementById("day-select");
         if (weekOffset === 0 && new Date().getDay() >= 0 && new Date().getDay() <= 4) {
@@ -731,6 +717,7 @@
         reloadTasksForWeek();
         createDayNotesCells();
         updateDayNotesDisplay();
+        loadAvailableWeeks();
 
         // Add clear all fields button handler
         document.getElementById('clear-all-fields').addEventListener('click', clearAllFields);
@@ -823,32 +810,6 @@
           });
         }
         
-        // Обрабатываем работу в команде
-        const teamWork = document.getElementById('team-work');
-        const targetName2Container = document.getElementById('target-name-2-container');
-        const targetName2 = document.getElementById('target-name-2');
-        
-        if (taskData.teamColor) {
-          teamWork.checked = true;
-          targetName2Container.style.display = 'block';
-          // Найдем второго участника команды
-          const { dateRange, weekNumber } = getWeekDateRange(weekOffset);
-          for (let otherRowIndex = 0; otherRowIndex < names.length; otherRowIndex++) {
-            if (otherRowIndex !== rowIndex) {
-              const otherKey = `notes/${dateRange}/${otherRowIndex}/${colIndex}/${taskNumber}`;
-              get(ref(db, otherKey)).then(snapshot => {
-                const otherData = snapshot.val();
-                if (otherData && otherData.teamColor === taskData.teamColor) {
-                  targetName2.value = otherData.name || '';
-                }
-              });
-            }
-          }
-        } else {
-          teamWork.checked = false;
-          targetName2Container.style.display = 'none';
-        }
-        
         // Сохраняем данные для использования при сохранении
         document.getElementById('single-panel').dataset.dbKey = dbKey;
         document.getElementById('single-panel').dataset.rowIndex = rowIndex;
@@ -892,9 +853,9 @@
         }, 3000);
       }
 
-      async function deleteTask(dateRange, rowIndex, colIndex, taskNumber, isTeamWork = false, teamColor = null) {
+      async function deleteTask(dateRange, rowIndex, colIndex, taskNumber) {
         try {
-          console.log('Delete task params:', { dateRange, rowIndex, colIndex, taskNumber, isTeamWork, teamColor });
+          console.log('Delete task params:', { dateRange, rowIndex, colIndex, taskNumber });
           
           if (!dateRange || rowIndex === undefined || colIndex === undefined || taskNumber === undefined) {
             console.error('Missing required parameters for delete');
@@ -910,21 +871,6 @@
           console.log('Deleting task at:', dbKey);
           await set(ref(db, dbKey), null);
 
-          // Если это командная работа, нужно найти и удалить задачу напарника
-          if (isTeamWork && teamColor) {
-            for (let otherColIndex = 0; otherColIndex < names.length; otherColIndex++) {
-              if (otherColIndex !== colIndex) {
-                const otherKey = `notes/${dateRange}/${rowIndex}/${otherColIndex}/${taskNumber}`;
-                const snapshot = await get(ref(db, otherKey));
-                const data = snapshot.val();
-                if (data && data.teamColor === teamColor) {
-                  console.log('Deleting team task at:', otherKey);
-                  await set(ref(db, otherKey), null);
-                }
-              }
-            }
-          }
-          
           showNotification('המשימה נמחקה בהצלחה');
           closeTaskFullScreen();
           // Перезагружаем задачи для обновления отображения
@@ -991,13 +937,11 @@
           dateRange: taskData.dateRange,
           rowIndex: taskData.rowIndex,
           colIndex: taskData.colIndex,
-          taskNumber: taskData.taskNumber,
-          isTeamWork: taskData.isTeamWork,
-          teamColor: taskData.teamColor || ''
+          taskNumber: taskData.taskNumber
         } : null;
 
         const deleteButtonHandler = taskInfo ? 
-          `onclick="deleteTask('${taskInfo.dateRange}', ${taskInfo.rowIndex}, ${taskInfo.colIndex}, ${taskInfo.taskNumber}, ${taskInfo.isTeamWork}, '${taskInfo.teamColor}')"` :
+          `onclick="deleteTask('${taskInfo.dateRange}', ${taskInfo.rowIndex}, ${taskInfo.colIndex}, ${taskInfo.taskNumber})"` :
           '';
 
         const headerContent = `
@@ -1038,6 +982,13 @@
         });
       }
 
+      function closeTaskFullScreen() {
+        const overlay = document.getElementById('task-fullscreen-overlay');
+        if (overlay && overlay.parentNode) {
+          overlay.parentNode.removeChild(overlay);
+        }
+      }
+
       // Делаем функции глобальными
       window.closeTaskFullScreen = closeTaskFullScreen;
       window.deleteTask = deleteTask;
@@ -1057,11 +1008,6 @@
         document.getElementById('no-code-entry').checked = false;
         document.getElementById('code-entry').style.display = 'block';
         document.getElementById('code-entry-options').style.display = 'none';
-        
-        // Clear team work fields
-        document.getElementById('team-work').checked = false;
-        document.getElementById('target-name-2').value = '';
-        document.getElementById('target-name-2-container').style.display = 'none';
         
         // Clear phone entries except the first one
         const phoneList = document.getElementById('phone-list');
@@ -1173,7 +1119,7 @@
             <style>
               body { font-family: sans-serif; direction: rtl; margin: 0; padding: 0; }
               .print-header { text-align: center; font-size: 1.25em; font-weight: bold; margin-top: 18px; margin-bottom: 6px; }
-              .print-logo { display: block; margin: 8px auto 10px auto; max-width: 140px; }
+              .print-logo { display: block; margin: 8px auto 14px auto; max-width: 310px; }
               .tasks-list { max-width: 600px; margin: 0 auto; }
               .task-print-block { margin: 16px 0; padding: 4px 0 2px 0; box-sizing: border-box; page-break-inside: avoid; border: none; border-radius: 0; min-height: 38px; }
               .task-field { margin-bottom: 3px; font-size: 0.98em; }
@@ -1185,7 +1131,7 @@
           </head>
           <body>
             <div class="print-header">${name} — ${dateLabel} — ${dayLabel}</div>
-            <img src="utech.png" alt="Utech Logo" class="print-logo" />
+            <img src="project/assets/utech.png" alt="Utech Logo" class="print-logo" />
             <div class="tasks-list">
         `;
         tasks.slice(0, 10).forEach((task) => {
@@ -1219,7 +1165,7 @@
         }, 500);
       }
 
-      // === Замена задач между разными днями и сотрудниками ===
+      // === Замена задач между разными днями и сотрудниками (без командных задач) ===
       async function swapTasks(day1Index, name1, task1, day2Index, name2, task2) {
         const { dateRange } = getWeekDateRange(weekOffset);
         const names = ["טימור", "שי", "פאבל", "איציק"];
@@ -1261,47 +1207,6 @@
             await set(ref(db, task1Key), null);
           }
 
-          // Если это командные задачи, нужно обновить и задачи напарников
-          if (task1Data && task1Data.teamColor) {
-            // Находим и обновляем задачу напарника для task1
-            for (let otherColIndex = 0; otherColIndex < names.length; otherColIndex++) {
-              if (otherColIndex !== col1Index) {
-                const otherTask1Key = `notes/${dateRange}/${day1Index}/${otherColIndex}/${task1}`;
-                const otherTask1Snapshot = await get(ref(db, otherTask1Key));
-                const otherTask1Data = otherTask1Snapshot.val();
-                
-                if (otherTask1Data && otherTask1Data.teamColor === task1Data.teamColor) {
-                  // Удаляем задачу напарника с первого места
-                  await set(ref(db, otherTask1Key), null);
-                  
-                  // Добавляем задачу напарника на второе место
-                  const otherTask2Key = `notes/${dateRange}/${day2Index}/${otherColIndex}/${task2}`;
-                  await set(ref(db, otherTask2Key), otherTask1Data);
-                }
-              }
-            }
-          }
-          
-          if (task2Data && task2Data.teamColor) {
-            // Находим и обновляем задачу напарника для task2
-            for (let otherColIndex = 0; otherColIndex < names.length; otherColIndex++) {
-              if (otherColIndex !== col2Index) {
-                const otherTask2Key = `notes/${dateRange}/${day2Index}/${otherColIndex}/${task2}`;
-                const otherTask2Snapshot = await get(ref(db, otherTask2Key));
-                const otherTask2Data = otherTask2Snapshot.val();
-                
-                if (otherTask2Data && otherTask2Data.teamColor === task2Data.teamColor) {
-                  // Удаляем задачу напарника со второго места
-                  await set(ref(db, otherTask2Key), null);
-                  
-                  // Добавляем задачу напарника на первое место
-                  const otherTask1Key = `notes/${dateRange}/${day1Index}/${otherColIndex}/${task1}`;
-                  await set(ref(db, otherTask1Key), otherTask2Data);
-                }
-              }
-            }
-          }
-
           showNotification('המשימות הוחלפו בהצלחה');
           
           // Перезагружаем задачи для обновления отображения
@@ -1312,112 +1217,27 @@
           alert("שגיאה בהחלפת המשימות");
         }
       }
-
-      // ... существующий код ...
-      // В обработчике single-insert вызываю debounceSaveTask без передачи reloadTasksForWeek и showNotification.
-      // ... существующий код ...
-
-    </script>
-    <script>
-
-      // Глобальная функция для закрытия полноэкранного режима
-      function closeTaskFullScreen() {
-        const overlay = document.getElementById('task-fullscreen-overlay');
-        if (overlay) {
-          overlay.remove();
-        }
-      }
-      
-      // Moon phase functionality from script.js
-      function getMoonPhase(date) {
-        const year = date.getFullYear();
-        const month = date.getMonth() + 1;
-        const day = date.getDate();
-
-        let lp = 2551443;
-        let now = new Date(year, month - 1, day);
-        let newMoon = new Date(1970, 0, 7, 20, 35, 0);
-        let phase = ((now.getTime() - newMoon.getTime()) / 1000) % lp;
-        let age = Math.floor(phase / (24 * 3600));
-
-        if (age === 0 || age === 29) return "🌑";
-        else if (age >= 1 && age <= 6) return "🌒";
-        else if (age === 7 || age === 8) return "🌓";
-        else if (age >= 9 && age <= 13) return "🌔";
-        else if (age === 14 || age === 15) return "🌕";
-        else if (age >= 16 && age <= 20) return "🌖";
-        else if (age === 21 || age === 22) return "🌗";
-        else if (age >= 23 && age <= 28) return "🌘";
-        else return "🌑";
-      }
-
-      // Initialize moon phase if element exists
-      const moonPhaseElement = document.getElementById('moonPhase');
-      const today = new Date();
-      if (moonPhaseElement) {
-        moonPhaseElement.textContent = getMoonPhase(today);
-        
-        // Audio functionality for moon phase
-        const audio = new Audio('assets/pgHUB/bansuka.mp3');
-        let canPlay = true;
-        
-        moonPhaseElement.addEventListener('click', () => {
-          if (canPlay) {
-            audio.currentTime = 0;
-            audio.play().catch(err => console.log('Audio play failed:', err));
-            canPlay = false;
-
-            setTimeout(() => {
-              canPlay = true;
-            }, 7500);
-          }
-        });
-      }
-      
-      // Video overlay functionality
-      const videoButton = document.getElementById('videoButton');
-      const videoOverlay = document.getElementById('videoOverlay');
-      const loloVideo = document.getElementById('loloVideo');
-      let canPlayVideo = true;
-
-      if (videoButton && videoOverlay && loloVideo) {
-        videoButton.addEventListener('click', () => {
-          if (canPlayVideo) {
-            videoOverlay.style.display = 'block';
-            loloVideo.play().catch(err => console.log('Video play failed:', err));
-            canPlayVideo = false;
-
-            setTimeout(() => {
-              canPlayVideo = true;
-            }, 15000);
-          }
-        });
-
-        loloVideo.addEventListener('ended', () => {
-          videoOverlay.style.display = 'none';
-          loloVideo.currentTime = 0;
-        });
-
-        loloVideo.addEventListener('click', () => {
-          videoOverlay.style.display = 'none';
-          loloVideo.pause();
-          loloVideo.currentTime = 0;
-        });
-      }
+  </script>
     </script>
   </head>
   <body>
-    <img src="utech.png" alt="Utech" class="logo-mobile">
+    <img src="project/assets/utech.png" alt="Utech" class="logo-mobile">
     <div class="header-nav">
       <a href="tofes.html" class="nav-btn">למילוי היומן</a>
-      <img src="utech.png" alt="Utech" class="logo">
+      <img src="project/assets/utech.png" alt="Utech" class="logo">
       <a href="view.html" class="nav-btn">ליומנים</a>
     </div>
 
-    <div class="week-controls" style="display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
-      <button id="next-week" style="font-size: 1em; margin: 0 5px; padding: 2px 8px;">→</button>
-      <span id="week-range" style="font-weight: bold; min-width: 140px; text-align: center;"></span>
-      <button id="prev-week" style="font-size: 1em; margin: 0 5px; padding: 2px 8px;">←</button>
+    <div class="week-controls">
+      <div class="week-secondary">
+        <select id="week-select" class="week-select"></select>
+        <button id="this-week" class="week-btn week-this">השבוע הנוכחי</button>
+      </div>
+      <div class="week-primary">
+        <button id="prev-week" class="week-btn">→</button>
+        <span id="week-range" class="week-range"></span>
+        <button id="next-week" class="week-btn">←</button>
+      </div>
     </div>
     <select id="day-select">
       <option value="0">ראשון</option>
@@ -1490,36 +1310,17 @@
     </table>
 
     <div id="single-panel">
-      <label
-        >שם:<span class="required">*</span>
-        <div class="team-work-row">
-          <select id="target-name" required>
-            <option value="">בחר שם</option>
-            <option>טימור</option>
-            <option>שי</option>
-            <option>פאבל</option>
-            <option>איציק</option>
-          </select>
-          <div class="checkbox-container">
-            <input type="checkbox" id="team-work" />
-            <label for="team-work">עבודת צוות</label>
-          </div>
-        </div>
+      <label>
+        שם:<span class="required">*</span>
+        <select id="target-name" required>
+          <option value="">בחר שם</option>
+          <option>טימור</option>
+          <option>שי</option>
+          <option>פאבל</option>
+          <option>איציק</option>
+        </select>
       </label>
-      <div id="target-name-2-container">
-        <label
-          >שם שני:<span class="required">*</span>
-          <div class="team-work-row">
-            <select id="target-name-2" required>
-              <option value="">בחר שם</option>
-              <option>טימור</option>
-              <option>שי</option>
-              <option>פאבל</option>
-              <option>איציק</option>
-            </select>
-          </div>
-        </label>
-      </div>
+      <div id="target-name-2-container" style="display:none;"></div>
       <label
         >יום:<span class="required">*</span>
         <select id="target-day" required>
@@ -1634,7 +1435,7 @@
           placeholder="📎 הזן הערות"
         ></textarea>
       </label>
-      <button id="single-insert">�� שמור משימה</button>
+      <button id="single-insert">📁 שמור משימה</button>
       <button id="clear-all-fields">🗑️ נקה את כל השדות</button>
       <button id="print-day-tasks">🖨️ הדפס משימות</button>
       <button id="swap-tasks">🔄 החלף משימות</button>
@@ -1766,1224 +1567,3 @@
     </div>
   </body>
 </html>
-<style>
-  body {
-    font-family: sans-serif;
-    padding: 20px;
-    background: #ffffff;
-    margin: 0;
-    position: relative;
-  }
-  
-  @media (max-width: 600px) {
-    * {
-      user-select: none;
-      -webkit-user-select: none; /* iOS */
-      -ms-user-select: none;
-    }
-  }
-  
-  /* Smooth fade-in from top animation */
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(-30px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  /* Apply animations to elements in order - elements start hidden and fade in */
-  .header-image {
-    opacity: 0;
-    animation: fadeInUp 0.6s ease-out 0s forwards;
-  }
-  
-  .week-controls {
-    opacity: 0;
-    animation: fadeInUp 0.6s ease-out 0.15s forwards;
-  }
-  
-  #day-select {
-    opacity: 0;
-    animation: fadeInUp 0.6s ease-out 0.3s forwards;
-  }
-  
-  #schedule-table {
-    opacity: 0;
-    animation: fadeInUp 0.6s ease-out 0.45s forwards;
-  }
-  
-  #schedule-table tbody tr {
-    opacity: 0;
-    animation: fadeInUp 0.5s ease-out forwards;
-  }
-  
-  #schedule-table tbody tr:nth-child(1) {
-    animation-delay: 0.6s;
-  }
-  
-  #schedule-table tbody tr:nth-child(2) {
-    animation-delay: 0.75s;
-  }
-  
-  #schedule-table tbody tr:nth-child(3) {
-    animation-delay: 0.9s;
-  }
-  
-  #schedule-table tbody tr:nth-child(4) {
-    animation-delay: 1.05s;
-  }
-  
-  #schedule-table tbody tr:nth-child(5) {
-    animation-delay: 1.2s;
-  }
-  
-  #schedule-table tbody tr:nth-child(6) {
-    animation-delay: 1.35s;
-  }
-  
-  #single-panel {
-    opacity: 0;
-    animation: fadeInUp 0.6s ease-out 1.5s forwards;
-  }
-  .header-image {
-    width: 100%;
-    max-width: 300px;
-    height: auto;
-    object-fit: contain;
-    display: block;
-    margin: 10px auto;
-    transition: transform 0.2s;
-  }
-  
-  .header-image:hover {
-    transform: scale(1.02);
-  }
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    max-width: 100%;
-    margin: 10px 0;
-  }
-  th,
-  td {
-    border: 1px solid #ccc;
-    padding: 8px;
-    text-align: center;
-    vertical-align: top;
-    position: relative;
-  }
-  th {
-    background: #83a737;
-    color: white;
-  }
-  .today {
-    background: #965fa9 !important;
-    color: rgb(255, 255, 255);
-  }
-  th.name {
-    background: #fc9247;
-  }
-  .checkboxes label {
-    display: inline-block;
-    margin: 0 2px;
-    position: relative;
-    font-weight: bold;
-    padding: 2px;
-    border: none;
-    min-width: 22px;
-    text-align: center;
-  }
-  .no-task {
-    color: black;
-  }
-  .has-task {
-    color: #ff0000;
-  }
-  .completed {
-    color: #008000;
-  }
-  .team_cyan {
-    color: #00ced1;
-    border: 1px solid #00ced1;
-    border-radius: 3px;
-  }
-  .tooltip {
-    display: none;
-    position: absolute;
-    bottom: 100%;
-    right: 0;
-    background: #fff;
-    border: 1px solid #ccc;
-    padding: 8px;
-    z-index: 10;
-    max-width: 200px;
-    white-space: pre-line;
-    font-size: 0.9em;
-    opacity: 0;
-    transform: translateY(-5px);
-    transition: opacity 0.2s ease, transform 0.2s ease;
-    pointer-events: none;
-  }
-  label:hover .tooltip {
-    display: block;
-    opacity: 1;
-    transform: translateY(0);
-  }
-  #day-select {
-    display: block;
-    margin: 10px auto;
-    padding: 5px;
-    font-size: 1em;
-    width: 200px;
-  }
-  #admin-button {
-    display: block;
-    margin: 10px auto;
-    padding: 8px 12px;
-    font-size: 0.9em;
-    background: #83a737;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  #admin-panel,
-  #single-panel {
-    display: none;
-    position: relative;
-    background: white;
-    border: 1px solid #ccc;
-    padding: 15px;
-    width: 100%;
-    max-width: 100%;
-    margin: 10px 0;
-    box-sizing: border-box;
-    z-index: 100;
-  }
-  textarea,
-  input,
-  select {
-    width: 100%;
-    margin-bottom: 8px;
-    padding: 5px;
-    font-size: 0.9em;
-  }
-  button {
-    padding: 8px;
-    font-size: 0.9em;
-    width: 100%;
-    margin-bottom: 5px;
-    transition: transform 0.2s, background-color 0.2s ease;
-  }
-  
-  button:hover {
-    transform: scale(1.03);
-  }
-  
-  button:active {
-    transform: scale(0.98);
-  }
-  .required {
-    color: red;
-  }
-  #phone-list {
-    margin-bottom: 5px;
-  }
-  .phone-entry {
-    display: flex;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-  .phone-number {
-    width: 65%;
-    margin-left: 5px;
-  }
-  .phone-name {
-    width: 35%;
-  }
-  #add-phone {
-    display: block;
-    padding: 5px;
-    font-size: 1em;
-    width: auto;
-    background: #83a737;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    margin: 5px 0;
-    transition: transform 0.2s, background-color 0.2s ease;
-    cursor: pointer;
-  }
-  
-  #add-phone:hover {
-    transform: scale(1.03);
-    background: rgba(131, 167, 55, 0.9);
-  }
-  .remove-phone {
-    padding: 5px;
-    font-size: 1em;
-    width: auto;
-    background: #ff4444;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    margin-right: 5px;
-    transition: transform 0.2s, background-color 0.2s ease;
-    cursor: pointer;
-  }
-  
-  .remove-phone:hover {
-    transform: scale(1.03);
-    background: rgba(255, 68, 68, 0.9);
-  }
-  #task-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    z-index: 200;
-    justify-content: center;
-    align-items: center;
-  }
-  #task-overlay-content {
-    background: #fff;
-    padding: 20px;
-    max-width: 90%;
-    max-height: 80%;
-    overflow-y: auto;
-    font-size: 1.5em;
-    text-align: right;
-    border-radius: 8px;
-    white-space: pre-line;
-    line-height: 2;
-  }
-  #task-overlay-content p {
-    margin: 0 0 15px 0;
-    direction: rtl;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-  }
-  .call-phone {
-    display: none;
-    width: auto;
-    height: auto;
-    padding: 0;
-    font-size: 1em;
-    background: none;
-    border: none;
-    cursor: pointer;
-    margin-right: 5px;
-    line-height: 1;
-    text-align: center;
-    text-decoration: none;
-    color: black;
-  }
-  #back-confirm-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    z-index: 300;
-    justify-content: center;
-    align-items: center;
-  }
-  #back-confirm-content {
-    background: #fff;
-    padding: 20px;
-    max-width: 90%;
-    text-align: center;
-    border-radius: 8px;
-    font-size: 1.2em;
-  }
-  #back-cancel {
-    margin-top: 10px;
-    padding: 8px 16px;
-    font-size: 1em;
-    background: #83a737;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: transform 0.2s, background-color 0.2s ease;
-  }
-  
-  #back-cancel:hover {
-    transform: scale(1.03);
-    background: rgba(131, 167, 55, 0.9);
-  }
-  #codes-section {
-    margin-bottom: 8px;
-  }
-  #codes-section label {
-    display: block;
-    margin-bottom: 2px;
-  }
-  .code-row {
-    display: flex;
-    align-items: center;
-    margin-bottom: 2px;
-  }
-  .code-row input[type="text"] {
-    width: 60%;
-    padding: 3px;
-    font-size: 0.9em;
-    margin-left: 5px;
-  }
-  .checkbox-container {
-    width: 40%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 0;
-    text-align: center;
-  }
-  .checkbox-container input[type="checkbox"] {
-    margin: 0;
-  }
-  .checkbox-container label {
-    font-size: 0.9em;
-    margin-top: 1px;
-    line-height: 1;
-  }
-  .code-options {
-    display: none;
-    margin-top: -27px;
-    margin-bottom: 2px;
-    padding-right: 40%;
-  }
-  .code-options select {
-    width: 60%;
-    font-size: 0.8em;
-    padding: 3px;
-    margin-left: 5px;
-  }
-  .team-work-row {
-    display: flex;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-  .team-work-row select {
-    width: 60%;
-    padding: 5px;
-    font-size: 0.9em;
-    margin-left: 5px;
-  }
-  #target-name-2-container {
-    display: none;
-    margin-bottom: 8px;
-  }
-
-  @media (max-width: 600px) {
-    body {
-      padding: 10px;
-    }
-    .header-image {
-      max-width: 150px;
-      margin: 5px auto;
-    }
-    table {
-      font-size: 0.85em;
-    }
-    th,
-    td {
-      padding: 5px;
-    }
-    .checkboxes label {
-      margin: 0 1px;
-    }
-    .tooltip {
-      max-width: 150px;
-      font-size: 0.8em;
-    }
-    #day-select {
-      width: 150px;
-      font-size: 0.9em;
-    }
-    #admin-button,
-    #admin-panel {
-      display: none;
-    }
-    #single-panel {
-      padding: 10px;
-    }
-    .call-phone {
-      display: inline-block;
-    }
-    .phone-number {
-      width: 60%;
-    }
-    .phone-name {
-      width: 40%;
-    }
-    .code-row input[type="text"] {
-      width: 55%;
-    }
-    .checkbox-container {
-      width: 45%;
-    }
-    .checkbox-container label {
-      font-size: 0.85em;
-    }
-    .code-options select {
-      width: 55%;
-    }
-    .team-work-row select {
-      width: 55%;
-    }
-    
-    /* Мобильные стили для заметок дней */
-    .day-notes-textarea {
-      min-height: 50px;
-      font-size: 0.8em;
-      padding: 6px;
-      padding-right: 35px; /* Место для кнопки на мобильных */
-    }
-    
-    .day-notes-cell {
-      padding: 4px !important;
-    }
-    
-    .day-notes-save-btn {
-      width: 20px;
-      height: 20px;
-      top: 6px;
-      right: 6px;
-      font-size: 10px;
-    }
-    
-    /* На мобильных скрываем заголовок заметок */
-    .day-notes-header {
-      display: none !important;
-    }
-    
-    /* Мобильные стили для мобильной строки заметок */
-    .mobile-notes-textarea {
-      width: 100%;
-      min-height: 60px;
-      padding: 8px;
-      padding-right: 40px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 0.9em;
-      font-family: inherit;
-      resize: vertical;
-      background-color: #fff;
-      box-sizing: border-box;
-    }
-    
-    .mobile-notes-cell {
-      padding: 4px !important;
-    }
-    
-    .mobile-notes-save-btn {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 24px;
-      height: 24px;
-      border: none;
-      border-radius: 4px;
-      background-color: #83a737;
-      color: white;
-      cursor: pointer;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background-color 0.2s ease;
-    }
-    
-    .mobile-notes-save-btn:hover {
-      background-color: #6b8a2a;
-    }
-  }
-
-  @media (min-width: 601px) {
-    #day-select {
-      display: none;
-    }
-    .checkboxes input[type="checkbox"]:disabled {
-      opacity: 1;
-      cursor: default;
-    }
-  }
-  /* Стили для заметок дней */
-  .day-notes-row {
-    background-color: #f8f9fa;
-  }
-  
-  .day-notes-header {
-    background-color: white !important;
-    color: black !important;
-    font-weight: bold;
-    text-align: center;
-    padding: 8px !important;
-    vertical-align: middle;
-  }
-  
-  .day-notes-cell {
-    padding: 8px !important;
-    vertical-align: top;
-  }
-  
-  .day-notes-container {
-    width: 100%;
-    position: relative;
-  }
-  
-  .day-notes-textarea {
-    width: 100%;
-    min-height: 60px;
-    padding: 8px;
-    padding-right: 40px; /* Место для кнопки */
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 0.85em;
-    font-family: inherit;
-    resize: vertical;
-    background-color: #fff;
-    box-sizing: border-box;
-  }
-  
-  .day-notes-textarea:focus {
-    outline: none;
-    border-color: #83a737;
-    box-shadow: 0 0 0 2px rgba(131, 167, 55, 0.2);
-  }
-  
-  .day-notes-textarea::placeholder {
-    color: #999;
-    font-style: italic;
-  }
-  
-  .day-notes-save-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 24px;
-    height: 24px;
-    border: none;
-    border-radius: 4px;
-    background-color: #83a737;
-    color: white;
-    cursor: pointer;
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s ease;
-  }
-  
-  .day-notes-save-btn:hover {
-    background-color: #6b8a2a;
-  }
-  
-  .day-notes-save-btn:active {
-    transform: scale(0.95);
-  }
-
-  /* Стили для мобильной строки заметок */
-  .mobile-notes-row {
-    background-color: #f8f9fa;
-  }
-  
-  .mobile-notes-cell {
-    padding: 8px !important;
-    vertical-align: top;
-  }
-  
-  .mobile-notes-container {
-    width: 100%;
-    position: relative;
-  }
-  
-  .mobile-notes-textarea {
-    width: 100%;
-    min-height: 60px;
-    padding: 8px;
-    padding-right: 40px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 0.9em;
-    font-family: inherit;
-    resize: vertical;
-    background-color: #fff;
-    box-sizing: border-box;
-  }
-  
-  .mobile-notes-textarea:focus {
-    outline: none;
-    border-color: #83a737;
-    box-shadow: 0 0 0 2px rgba(131, 167, 55, 0.2);
-  }
-  
-  .mobile-notes-save-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 24px;
-    height: 24px;
-    border: none;
-    border-radius: 4px;
-    background-color: #83a737;
-    color: white;
-    cursor: pointer;
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s ease;
-  }
-  
-  .mobile-notes-save-btn:hover {
-    background-color: #6b8a2a;
-  }
-
-  /* Стили для модального окна редактирования */
-  #edit-task-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 10000;
-  }
-
-  #edit-task-modal-content {
-    background-color: white;
-    border-radius: 12px;
-    padding: 20px;
-    max-width: 90%;
-    max-height: 90%;
-    overflow-y: auto;
-    direction: rtl;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  }
-
-  #edit-task-modal-content h2 {
-    text-align: center;
-    margin-bottom: 20px;
-    color: #333;
-    font-size: 1.5em;
-  }
-
-  #edit-single-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-  }
-
-  #edit-single-panel label {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    font-weight: bold;
-    color: #333;
-  }
-
-  #edit-single-panel input,
-  #edit-single-panel select,
-  #edit-single-panel textarea {
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-    font-family: inherit;
-  }
-
-  #edit-single-panel input:focus,
-  #edit-single-panel select:focus,
-  #edit-single-panel textarea:focus {
-    outline: none;
-    border-color: #83a737;
-    box-shadow: 0 0 0 2px rgba(131, 167, 55, 0.2);
-  }
-
-  .edit-buttons {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    margin-top: 20px;
-  }
-
-  .edit-buttons button {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-  }
-
-  #edit-save-task {
-    background-color: #83a737;
-    color: white;
-  }
-
-  #edit-save-task:hover {
-    background-color: #6b8a2a;
-  }
-
-  #edit-delete-task {
-    background-color: #dc3545;
-    color: white;
-  }
-
-  #edit-delete-task:hover {
-    background-color: #c82333;
-  }
-
-  #edit-cancel {
-    background-color: #6c757d;
-    color: white;
-  }
-
-  #edit-cancel:hover {
-    background-color: #5a6268;
-  }
-
-  /* Адаптивность для мобильных устройств */
-  @media (max-width: 600px) {
-    #edit-task-modal-content {
-      max-width: 95%;
-      max-height: 95%;
-      padding: 15px;
-    }
-
-    .edit-buttons {
-      flex-direction: column;
-    }
-
-    .edit-buttons button {
-      width: 100%;
-    }
-  }
-
-  /* Анимации для уведомлений */
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateX(100%);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  @keyframes slideOut {
-    from {
-      opacity: 1;
-      transform: translateX(0);
-    }
-    to {
-      opacity: 0;
-      transform: translateX(100%);
-    }
-  }
-
-  /* Стили для полноэкранного отображения задач */
-  .task-fullscreen-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 2px solid #83a737;
-  }
-
-  .task-fullscreen-header h2 {
-    margin: 0;
-    color: #333;
-    font-size: 1.8em;
-  }
-
-  .close-fullscreen-btn {
-    background: #fc9247;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    font-size: 18px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s ease;
-  }
-
-  .close-fullscreen-btn:hover {
-    background: #e67e22;
-  }
-
-  .task-fullscreen-body {
-    font-size: 16px;
-    line-height: 1.6;
-  }
-
-  .task-line {
-    margin-bottom: 12px;
-    padding: 8px;
-    background-color: #f8f9fa;
-    border-radius: 6px;
-    border-right: 4px solid #83a737;
-  }
-
-  .phone-line {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .call-phone-btn {
-    color: #28a745;
-    text-decoration: none;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 14px;
-    transition: color 0.2s ease;
-  }
-
-  .call-phone-btn:hover {
-    color: #218838;
-  }
-
-  /* Адаптивность для мобильных устройств */
-  @media (max-width: 600px) {
-    #task-fullscreen-content {
-      max-width: 95%;
-      max-height: 95%;
-      padding: 20px;
-    }
-
-    .task-fullscreen-header h2 {
-      font-size: 1.5em;
-    }
-
-    .task-line {
-      font-size: 14px;
-    }
-  }
-
-  /* Добавьте стиль для .task-label-text, чтобы текст был слева, чекбокс справа */
-  .task-label-text {
-    flex: 1;
-    text-align: right;
-    direction: rtl;
-    word-break: break-word;
-    white-space: pre-line;
-  }
-
-  .checkboxes label:not(:last-child) {
-    border-left: 1px solid #e0e0e0;
-    margin-left: 4px;
-    padding-left: 8px;
-  }
-
-  .checkboxes {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    height: 100%;
-  }
-  .task-label-text {
-    flex: 1;
-    text-align: right;
-    direction: rtl;
-    word-break: break-word;
-    white-space: pre-line;
-  }
-
-  .task-fullscreen-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
-
-  .delete-task-btn {
-    background: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 8px 16px;
-    font-size: 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    transition: background-color 0.2s ease;
-  }
-
-  .delete-task-btn:hover {
-    background: #c82333;
-  }
-
-  @media (max-width: 600px) {
-    .task-fullscreen-actions {
-      flex-direction: row;
-      gap: 8px;
-    }
-    
-    .delete-task-btn {
-      padding: 6px 12px;
-      font-size: 13px;
-    }
-  }
-
-
-
-  .notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background-color: #83a737;
-    color: white;
-    padding: 12px 20px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: bold;
-    z-index: 10000;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    animation: slideIn 0.3s ease;
-  }
-
-  .bottom-names-row td {
-    text-align: center;
-    font-weight: bold;
-    padding: 10px;
-    border-top: 2px solid #ccc;
-    background-color: #83a737;
-    color: white;
-  }
-  
-  /* Moon phase styles and animations */
-  .moon-phase {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
-    cursor: pointer;
-    transition: transform 0.2s;
-    display: inline-block;
-  }
-  
-  .moon-phase:hover {
-    transform: scale(1.1);
-  }
-  
-  /* Enhanced button animations */
-  #single-insert,
-  #clear-all-fields,
-  #print-day-tasks,
-  #swap-tasks,
-  #print-modal-confirm,
-  #print-modal-cancel,
-  #swap-modal-confirm,
-  #swap-modal-cancel {
-    transition: transform 0.2s, background-color 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-  }
-  
-  #single-insert:hover,
-  #clear-all-fields:hover,
-  #print-day-tasks:hover,
-  #swap-tasks:hover,
-  #print-modal-confirm:hover,
-  #swap-modal-confirm:hover {
-    transform: scale(1.03);
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.5);
-  }
-  
-  #print-modal-cancel:hover,
-  #swap-modal-cancel:hover {
-    transform: scale(1.03);
-  }
-  
-  /* Link card animations */
-  .link-card {
-    transition: transform 0.2s, background-color 0.2s ease;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-  }
-  
-  .link-card:hover {
-    transform: scale(1.03);
-    background: rgba(255, 255, 255, 0.1);
-  }
-  
-  /* Select and input transitions */
-  select,
-  input[type="text"],
-  input[type="tel"],
-  textarea {
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  }
-  
-  select:focus,
-  input[type="text"]:focus,
-  input[type="tel"]:focus,
-  textarea:focus {
-    outline: none;
-    border-color: #83a737;
-    box-shadow: 0 0 0 2px rgba(131, 167, 55, 0.2);
-  }
-  
-  /* Table cell hover effects */
-  .checkboxes label {
-    transition: transform 0.2s, background-color 0.2s ease;
-  }
-  
-  .checkboxes label:hover {
-    transform: scale(1.05);
-  }
-  
-  /* Smooth fade-in for dynamically loaded content */
-  .checkboxes {
-    animation: fadeInUp 0.4s ease-out forwards;
-    opacity: 0;
-  }
-  
-  /* Stagger animation for table columns */
-  #schedule-table thead th {
-    opacity: 0;
-    animation: fadeInUp 0.5s ease-out forwards;
-  }
-  
-  #schedule-table thead th:nth-child(1) { animation-delay: 0.5s; }
-  #schedule-table thead th:nth-child(2) { animation-delay: 0.55s; }
-  #schedule-table thead th:nth-child(3) { animation-delay: 0.6s; }
-  #schedule-table thead th:nth-child(4) { animation-delay: 0.65s; }
-  #schedule-table thead th:nth-child(5) { animation-delay: 0.7s; }
-  #schedule-table thead th:nth-child(6) { animation-delay: 0.75s; }
-  
-  /* Week navigation buttons */
-  #next-week,
-  #prev-week {
-    transition: transform 0.2s, background-color 0.2s ease;
-    cursor: pointer;
-  }
-  
-  #next-week:hover,
-  #prev-week:hover {
-    transform: scale(1.1);
-  }
-  
-  /* Link color transitions */
-  a {
-    transition: color 0.2s ease, text-decoration 0.2s ease;
-  }
-  
-  a:hover {
-    color: #fff;
-    text-decoration: underline;
-  }
-  
-  /* Smooth transitions for all interactive elements */
-  .call-phone-btn,
-  .close-fullscreen-btn,
-  .delete-task-btn,
-  .day-notes-save-btn,
-  .mobile-notes-save-btn {
-    transition: transform 0.2s, background-color 0.2s ease, color 0.2s ease;
-  }
-  
-  .call-phone-btn:hover,
-  .close-fullscreen-btn:hover,
-  .delete-task-btn:hover,
-  .day-notes-save-btn:hover,
-  .mobile-notes-save-btn:hover {
-    transform: scale(1.05);
-  }
-  
-  .header-nav {
-  display: none;
-  justify-content: space-between;
-  align-items: center;
-  max-width: 800px;
-  margin: 0 auto 20px auto;
-}
-
-.logo-mobile {
-  display: block;
-  max-width: 200px;
-  height: auto;
-  margin: 0 auto 15px auto;
-}
-
-@media (min-width: 769px) {
-  .header-nav {
-    display: flex;
-  }
-  
-  .logo-mobile {
-    display: none;
-  }
-}
-
-.nav-btn {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  background: #83a737;
-  color: white;
-  font-weight: bold;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-decoration: none;
-  display: inline-block;
-}
-
-.nav-btn:hover {
-  background: #6d8c2f;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(131, 167, 55, 0.3);
-}
-
-.logo {
-  max-width: 500px;
-  height: auto;
-}
-
-  /* Tooltip smooth appearance */
-  .tooltip {
-    transition: opacity 0.2s ease, transform 0.2s ease;
-  }
-  
-  label:hover .tooltip {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  
-  /* Modal overlay smooth transitions */
-  #print-modal,
-  #swap-modal,
-  #task-overlay,
-  #back-confirm-overlay {
-    transition: opacity 0.3s ease;
-  }
-  
-  /* Table header hover effect */
-  th {
-    transition: background-color 0.2s ease;
-  }
-  
-  th:hover {
-    background-color: rgba(131, 167, 55, 0.9);
-  }
-</style>
