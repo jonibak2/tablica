@@ -173,7 +173,7 @@ body {
 }
 
 .week-btn:hover {
-  transform: scale(1.05);
+  transform: scale(1.015);
 }
 
 .week-this {
