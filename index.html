@@ -764,18 +764,6 @@
             task2.value = (val + 1).toString();
           }
         });
-
-        // Обработчик для кнопки открытия карты Waze
-        document.getElementById('open-address-map').addEventListener('click', (e) => {
-          e.preventDefault();
-          const address = document.getElementById('task-address').value.trim();
-          if (address) {
-            const wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(address)}`;
-            window.open(wazeUrl, '_blank');
-          } else {
-            alert('נא להזין כתובת קודם כל');
-          }
-        });
       });
 
       function fillAdminPanelWithTaskData(taskData, dbKey, rowIndex, colIndex, taskNumber) {
@@ -1429,10 +1417,7 @@
       </div>
       <label
         >כתובת:<span class="required">*</span>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <input type="text" id="task-address" required placeholder="📬 הזן כתובת" />
-          <button type="button" id="open-address-map" style="padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; transition: background 0.2s ease;">🗺️</button>
-        </div>
+        <input type="text" id="task-address" required placeholder="📬 הזן כתובת" />
       </label>
       <div id="codes-section">
         <label>קוד:<span class="required">*</span></label>

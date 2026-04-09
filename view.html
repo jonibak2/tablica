@@ -415,6 +415,142 @@
         .modal-content::-webkit-scrollbar-thumb:hover {
             background: #6d8c2f;
         }
+
+        /* Project management modal */
+        .project-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s;
+        }
+
+        .project-modal-overlay.active {
+            display: flex;
+        }
+
+        .project-modal {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        .project-modal-header {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #83a737;
+        }
+
+        .project-modal-header h2 {
+            color: #83a737;
+            margin: 0;
+        }
+
+        .project-modal-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .project-modal-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .project-modal-input:focus {
+            outline: none;
+            border-color: #83a737;
+        }
+
+        .project-modal-add-btn {
+            padding: 12px 24px;
+            background: #83a737;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .project-modal-add-btn:hover {
+            background: #6d8c2f;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(131, 167, 55, 0.3);
+        }
+
+        .project-list {
+            margin-bottom: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .project-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border: 1px solid #e0e0e0;
+            transition: all 0.2s;
+        }
+
+        .project-item:hover {
+            background: #f0f0f0;
+            border-color: #83a737;
+        }
+
+        .project-item-name {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .project-item-delete {
+            padding: 6px 12px;
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .project-item-delete:hover {
+            background: #ff3838;
+            transform: scale(1.05);
+        }
+
+        .project-modal-close {
+            padding: 12px 24px;
+            background: #e0e0e0;
+            color: #333;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .project-modal-close:hover {
+            background: #d0d0d0;
+        }
     </style>
 </head>
 <body>
@@ -432,10 +568,31 @@
         <div class="search-container" id="search-container">
             <input type="text" class="search-input" id="search-input" placeholder="חפש כתובת...">
         </div>
+        <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
+            <button id="add-project-btn" style="padding: 12px 24px; background: #83a737; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s;">הוסף פרויקט</button>
+        </div>
     </div>
 
     <div id="loading" class="loading">טוען נתונים...</div>
     <div id="data-container"></div>
+
+    <!-- Project Management Modal -->
+    <div id="project-modal-overlay" class="project-modal-overlay">
+        <div class="project-modal">
+            <div class="project-modal-header">
+                <h2>ניהול פרויקטים</h2>
+            </div>
+            
+            <div class="project-modal-input-group">
+                <input type="text" id="project-modal-input" class="project-modal-input" placeholder="הזן שם פרויקט חדש">
+                <button id="project-modal-add-btn" class="project-modal-add-btn">הוסף</button>
+            </div>
+
+            <div class="project-list" id="project-list"></div>
+
+            <button id="project-modal-close-btn" class="project-modal-close">סגור</button>
+        </div>
+    </div>
 
     <!-- Modal -->
     <div id="modal-overlay" class="modal-overlay">
@@ -447,7 +604,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, onValue, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDuvwDMAsyQSURluc7Mr-Ow5r2Iq2xh9P8",
@@ -466,6 +623,118 @@
         let workLogsData = null;
         let currentView = 'worker';
         let searchQuery = '';
+        let projectsList = {};
+
+        // Load projects from Firebase
+        const projectsRef = ref(database, 'projects');
+        onValue(projectsRef, (snapshot) => {
+            projectsList = snapshot.val() || {};
+            updateProjectsList();
+        });
+
+        // Update projects list display
+        function updateProjectsList() {
+            const projectList = document.getElementById('project-list');
+            const projects = Object.entries(projectsList).sort((a, b) => 
+                a[1].name.localeCompare(b[1].name, 'he')
+            );
+
+            projectList.innerHTML = '';
+            
+            if (projects.length === 0) {
+                projectList.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">אין פרויקטים עדיין</div>';
+                return;
+            }
+
+            projects.forEach(([projectId, project]) => {
+                const projectItem = document.createElement('div');
+                projectItem.className = 'project-item';
+                projectItem.innerHTML = `
+                    <span class="project-item-name">${project.name}</span>
+                    <button class="project-item-delete" data-project-id="${projectId}">מחק</button>
+                `;
+                
+                projectItem.querySelector('.project-item-delete').addEventListener('click', async () => {
+                    if (confirm(`האם אתה בטוח שברצונך למחוק את הפרויקט "${project.name}"?`)) {
+                        try {
+                            const projectRefToDelete = ref(database, `projects/${projectId}`);
+                            await set(projectRefToDelete, null);
+                            // Project list will update automatically via onValue listener
+                        } catch (error) {
+                            console.error('Error deleting project:', error);
+                            alert('שגיאה במחיקת הפרויקט');
+                        }
+                    }
+                });
+                
+                projectList.appendChild(projectItem);
+            });
+        }
+
+        // Open project modal
+        document.getElementById('add-project-btn').addEventListener('click', () => {
+            document.getElementById('project-modal-overlay').classList.add('active');
+            document.getElementById('project-modal-input').focus();
+        });
+
+        // Close project modal
+        document.getElementById('project-modal-close-btn').addEventListener('click', () => {
+            document.getElementById('project-modal-overlay').classList.remove('active');
+            document.getElementById('project-modal-input').value = '';
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('project-modal-overlay').addEventListener('click', (e) => {
+            if (e.target.id === 'project-modal-overlay') {
+                document.getElementById('project-modal-overlay').classList.remove('active');
+                document.getElementById('project-modal-input').value = '';
+            }
+        });
+
+        // Add project from modal
+        document.getElementById('project-modal-add-btn').addEventListener('click', async () => {
+            await addProject();
+        });
+
+        // Add project when pressing Enter
+        document.getElementById('project-modal-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addProject();
+            }
+        });
+
+        async function addProject() {
+            const projectInput = document.getElementById('project-modal-input');
+            const projectName = projectInput.value.trim();
+
+            if (!projectName) {
+                alert('נא להזין שם פרויקט');
+                return;
+            }
+
+            try {
+                // Check if project already exists
+                const projectExists = Object.values(projectsList).some(p => p.name === projectName);
+                
+                if (projectExists) {
+                    alert('פרויקט זה כבר קיים');
+                    return;
+                }
+
+                // Add new project
+                const newProjectRef = push(projectsRef);
+                await set(newProjectRef, {
+                    name: projectName,
+                    createdAt: new Date().toISOString()
+                });
+
+                projectInput.value = '';
+                alert('פרויקט הוסף בהצלחה');
+            } catch (error) {
+                console.error('Error adding project:', error);
+                alert('שגיאה בהוספת הפרויקט');
+            }
+        }
 
         // Load data from Firebase
         const workLogsRef = ref(database, 'workLogs');
