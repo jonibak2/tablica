@@ -764,6 +764,18 @@
             task2.value = (val + 1).toString();
           }
         });
+
+        // Обработчик для кнопки открытия карты Waze
+        document.getElementById('open-address-map').addEventListener('click', (e) => {
+          e.preventDefault();
+          const address = document.getElementById('task-address').value.trim();
+          if (address) {
+            const wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(address)}`;
+            window.open(wazeUrl, '_blank');
+          } else {
+            alert('נא להזין כתובת קודם כל');
+          }
+        });
       });
 
       function fillAdminPanelWithTaskData(taskData, dbKey, rowIndex, colIndex, taskNumber) {
@@ -940,6 +952,7 @@
         const lines = taskText.split(/[\r\n]+/);
         const formattedContent = lines
           .map((line) => {
+            // Обработка телефонов
             if (line.match(/טלפון \d+:/)) {
               const phoneMatch = line.match(/טלפון \d+: ([^,]+), שם: (.*)/);
               if (phoneMatch) {
@@ -947,6 +960,17 @@
                 return `<div class="task-line phone-line">
                   <span>${line}</span>
                   <a href="tel:${phoneNumber}" class="call-phone-btn">📞</a>
+                </div>`;
+              }
+            }
+            // Обработка адреса
+            if (line.match(/^כתובת:/)) {
+              const address = line.replace(/^כתובת:\s*/, '').trim();
+              if (address) {
+                const wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(address)}`;
+                return `<div class="task-line address-line">
+                  <span>${line}</span>
+                  <a href="${wazeUrl}" target="_blank" class="navigate-btn">🗺️</a>
                 </div>`;
               }
             }
@@ -1405,7 +1429,10 @@
       </div>
       <label
         >כתובת:<span class="required">*</span>
-        <input type="text" id="task-address" required placeholder="📬 הזן כתובת" />
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <input type="text" id="task-address" required placeholder="📬 הזן כתובת" />
+          <button type="button" id="open-address-map" style="padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; transition: background 0.2s ease;">🗺️</button>
+        </div>
       </label>
       <div id="codes-section">
         <label>קוד:<span class="required">*</span></label>

@@ -52,6 +52,12 @@
   align-items: center;
 }
 
+.address-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .close-fullscreen-btn {
   background: #fc9247;
   color: white;
@@ -118,6 +124,20 @@
 
 .call-phone-btn:hover {
   color: #218838;
+  transform: scale(1.05);
+}
+
+.navigate-btn {
+  color: #007bff;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.navigate-btn:hover {
+  color: #0056b3;
   transform: scale(1.05);
 }
 
