@@ -561,8 +561,9 @@
             <a href="index.html" class="nav-btn">סידור עבודה</a>
         </div>
         <div class="view-toggle">
-            <button class="view-btn active" data-view="worker">לפי עובד</button>
+            <button class="view-btn active" data-view="project">לפי פרויקט</button>
             <button class="view-btn" data-view="date">לפי תאריך</button>
+            <button class="view-btn" data-view="worker">לפי עובד</button>
             <button class="view-btn" data-view="address">לפי כתובת</button>
         </div>
         <div class="search-container" id="search-container">
@@ -621,7 +622,7 @@
         const database = getDatabase(app);
 
         let workLogsData = null;
-        let currentView = 'worker';
+        let currentView = 'project';
         let searchQuery = '';
         let projectsList = {};
 
@@ -791,13 +792,73 @@
             const container = document.getElementById('data-container');
             container.innerHTML = '';
 
-            if (view === 'worker') {
-                renderByWorker();
+            if (view === 'project') {
+                renderByProject();
             } else if (view === 'date') {
                 renderByDate();
+            } else if (view === 'worker') {
+                renderByWorker();
             } else if (view === 'address') {
                 renderByAddress();
             }
+        }
+
+        // Helper function to format date
+        function formatDate(dateStr) {
+            const [year, month, day] = dateStr.split('-');
+            return `${day}.${month}.${year}`;
+        }
+
+        function renderByProject() {
+            const container = document.getElementById('data-container');
+            const columnsContainer = document.createElement('div');
+            columnsContainer.className = 'columns-container';
+
+            // Collect all unique projects
+            const projectMap = new Map();
+            Object.keys(workLogsData).forEach(worker => {
+                Object.keys(workLogsData[worker]).forEach(date => {
+                    Object.keys(workLogsData[worker][date]).forEach(project => {
+                        if (!projectMap.has(project)) {
+                            projectMap.set(project, []);
+                        }
+                        projectMap.get(project).push({ worker, date });
+                    });
+                });
+            });
+
+            const sortedProjects = Array.from(projectMap.keys()).sort();
+
+            sortedProjects.forEach((project, index) => {
+                const column = createColumn(project, index);
+                const entries = projectMap.get(project);
+
+                // Group by worker
+                const workerMap = new Map();
+                entries.forEach(({ worker, date }) => {
+                    if (!workerMap.has(worker)) {
+                        workerMap.set(worker, []);
+                    }
+                    workerMap.get(worker).push(date);
+                });
+
+                Array.from(workerMap.keys()).sort().forEach(worker => {
+                    const workerItem = createNestedItem(worker, () => {
+                        return workerMap.get(worker).sort().reverse().map(date => {
+                            const item = document.createElement('div');
+                            item.className = 'final-item';
+                            item.textContent = formatDate(date);
+                            item.onclick = () => showModal(worker, date, project, true);
+                            return item;
+                        });
+                    });
+                    column.content.appendChild(workerItem);
+                });
+
+                columnsContainer.appendChild(column.element);
+            });
+
+            container.appendChild(columnsContainer);
         }
 
         function renderByWorker() {
@@ -812,13 +873,13 @@
                 const dates = Object.keys(workLogsData[worker]).sort().reverse();
 
                 dates.forEach(date => {
-                    const dateItem = createNestedItem(date, () => {
-                        const addresses = Object.keys(workLogsData[worker][date]);
-                        return addresses.map(address => {
+                    const dateItem = createNestedItem(formatDate(date), () => {
+                        const projects = Object.keys(workLogsData[worker][date]);
+                        return projects.map(project => {
                             const item = document.createElement('div');
                             item.className = 'address-item';
-                            item.textContent = address;
-                            item.onclick = () => showModal(worker, date, address);
+                            item.textContent = project;
+                            item.onclick = () => showModal(worker, date, project, true);
                             return item;
                         });
                     });
@@ -843,8 +904,8 @@
                     if (!datesMap.has(date)) {
                         datesMap.set(date, []);
                     }
-                    Object.keys(workLogsData[worker][date]).forEach(address => {
-                        datesMap.get(date).push({ worker, address });
+                    Object.keys(workLogsData[worker][date]).forEach(project => {
+                        datesMap.get(date).push({ worker, project });
                     });
                 });
             });
@@ -852,25 +913,25 @@
             const sortedDates = Array.from(datesMap.keys()).sort().reverse();
 
             sortedDates.forEach((date, index) => {
-                const column = createColumn(date, index);
+                const column = createColumn(formatDate(date), index);
                 const entries = datesMap.get(date);
 
                 // Group by worker
                 const workerMap = new Map();
-                entries.forEach(({ worker, address }) => {
+                entries.forEach(({ worker, project }) => {
                     if (!workerMap.has(worker)) {
                         workerMap.set(worker, []);
                     }
-                    workerMap.get(worker).push(address);
+                    workerMap.get(worker).push(project);
                 });
 
                 Array.from(workerMap.keys()).sort().forEach(worker => {
                     const workerItem = createNestedItem(worker, () => {
-                        return workerMap.get(worker).map(address => {
+                        return workerMap.get(worker).map(project => {
                             const item = document.createElement('div');
-                            item.className = 'address-item';
-                            item.textContent = address;
-                            item.onclick = () => showModal(worker, date, address);
+                            item.className = 'final-item';
+                            item.textContent = project;
+                            item.onclick = () => showModal(worker, date, project, true);
                             return item;
                         });
                     });
@@ -888,15 +949,18 @@
             const columnsContainer = document.createElement('div');
             columnsContainer.className = 'columns-container';
 
-            // Collect all unique addresses
+            // Collect all unique addresses from project data
             const addressMap = new Map();
             Object.keys(workLogsData).forEach(worker => {
                 Object.keys(workLogsData[worker]).forEach(date => {
-                    Object.keys(workLogsData[worker][date]).forEach(address => {
+                    Object.keys(workLogsData[worker][date]).forEach(project => {
+                        const projectData = workLogsData[worker][date][project];
+                        const address = projectData.address || 'No address';
+                        
                         if (!addressMap.has(address)) {
                             addressMap.set(address, []);
                         }
-                        addressMap.get(address).push({ worker, date });
+                        addressMap.get(address).push({ worker, date, project });
                     });
                 });
             });
@@ -918,26 +982,27 @@
                 const column = createColumn(address, index);
                 const entries = addressMap.get(address);
 
-                // Group by worker
-                const workerMap = new Map();
-                entries.forEach(({ worker, date }) => {
-                    if (!workerMap.has(worker)) {
-                        workerMap.set(worker, []);
+                // Group by project
+                const projectMap = new Map();
+                entries.forEach(({ worker, date, project }) => {
+                    const key = `${project}`;
+                    if (!projectMap.has(key)) {
+                        projectMap.set(key, []);
                     }
-                    workerMap.get(worker).push(date);
+                    projectMap.get(key).push({ worker, date });
                 });
 
-                Array.from(workerMap.keys()).sort().forEach(worker => {
-                    const workerItem = createNestedItem(worker, () => {
-                        return workerMap.get(worker).sort().reverse().map(date => {
+                Array.from(projectMap.keys()).sort().forEach(projectKey => {
+                    const projectItem = createNestedItem(projectKey, () => {
+                        return projectMap.get(projectKey).map(({ worker, date }) => {
                             const item = document.createElement('div');
                             item.className = 'final-item';
-                            item.textContent = date;
-                            item.onclick = () => showModal(worker, date, address);
+                            item.textContent = `${worker} - ${formatDate(date)}`;
+                            item.onclick = () => showModal(worker, date, projectKey, true);
                             return item;
                         });
                     });
-                    column.content.appendChild(workerItem);
+                    column.content.appendChild(projectItem);
                 });
 
                 columnsContainer.appendChild(column.element);
@@ -996,14 +1061,14 @@
             return item;
         }
 
-        function showModal(worker, date, address) {
-            const data = workLogsData[worker][date][address];
+        function showModal(worker, date, project, isProject = false) {
+            const data = workLogsData[worker][date][project];
             const modalBody = document.getElementById('modal-body');
 
             let html = `
                 <div class="modal-header">
-                    <h2>${worker}</h2>
-                    <h3>${date} • ${address}</h3>
+                    <h2><b>${project}</b></h2>
+                    <h3>${worker} • ${formatDate(date)}${data.address ? ' • ' + data.address : ''}</h3>
                 </div>
             `;
 
