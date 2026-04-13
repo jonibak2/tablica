@@ -5,6 +5,7 @@
     <link rel="icon" href="project/assets/logo.jpg" type="image/jpeg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>צפייה ביומן עבודה</title>
+    <link rel="stylesheet" href="project/css/16-notifications.css" />
     <style>
         * {
             margin: 0;
@@ -58,6 +59,32 @@
             box-shadow: 0 4px 12px rgba(131, 167, 55, 0.3);
         }
 
+        .nav-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .nav-sub-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #83a737;
+            color: white;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: not-allowed;
+            opacity: 0.6;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .nav-sub-btn:hover {
+            background: #83a737;
+        }
+
         .logo {
             max-width: 500px;
             height: auto;
@@ -80,6 +107,17 @@
 
         .search-container.active {
             display: block;
+        }
+
+        #date-search-container {
+            display: none !important;
+            width: 100%;
+            max-width: 500px;
+            margin-top: 10px;
+        }
+
+        #date-search-container.active {
+            display: block !important;
         }
 
         .search-input {
@@ -551,14 +589,353 @@
         .project-modal-close:hover {
             background: #d0d0d0;
         }
+
+        /* Date search container improvements */
+        #date-search-container {
+            position: relative;
+        }
+
+        #date-search-input {
+            appearance: none;
+            background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2383a737' stroke-width='2'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E") no-repeat;
+            background-position: left 12px center;
+            padding-left: 45px !important;
+            cursor: pointer;
+        }
+
+        #date-search-input::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            border-radius: 4px;
+            margin-right: 6px;
+            opacity: 0;
+            width: 0;
+        }
+
+        /* Edit modal styles */
+        .edit-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1500;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .edit-modal-overlay.active {
+            display: flex;
+        }
+
+        .edit-modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease-out;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .edit-modal-header {
+            margin-bottom: 24px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #83a737;
+        }
+
+        .edit-modal-header h2 {
+            color: #83a737;
+            margin: 0 0 5px 0;
+            font-size: 24px;
+        }
+
+        .edit-modal-header p {
+            color: #666;
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .edit-form-group {
+            margin-bottom: 20px;
+        }
+
+        .edit-form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .edit-form-input,
+        .edit-form-textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        .edit-form-input:focus,
+        .edit-form-textarea:focus {
+            outline: none;
+            border-color: #83a737;
+            background: #f9fff6;
+        }
+
+        select.edit-form-input {
+            background: white;
+            appearance: none;
+            cursor: pointer;
+            padding-left: 15px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23333' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: left 12px center;
+            padding-left: 35px;
+        }
+
+        .edit-form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .edit-form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .edit-modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .edit-save-btn {
+            flex: 1;
+            padding: 12px 24px;
+            background: #83a737;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .edit-save-btn:hover {
+            background: #6d8c2f;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(131, 167, 55, 0.3);
+        }
+
+        .edit-cancel-btn {
+            flex: 1;
+            padding: 12px 24px;
+            background: #e0e0e0;
+            color: #333;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .edit-cancel-btn:hover {
+            background: #d0d0d0;
+        }
+
+        .floor-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: flex-end;
+        }
+
+        .floor-input-group select {
+            flex: 0.8;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        .floor-input-group select:focus {
+            outline: none;
+            border-color: #83a737;
+            background: #f9fff6;
+        }
+
+        .floor-input-group input {
+            flex: 1;
+        }
+
+        .floor-delete-btn {
+            padding: 8px 12px;
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .floor-delete-btn:hover {
+            background: #ff3838;
+        }
+
+        .equipment-delete-btn {
+            padding: 6px 10px;
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .equipment-delete-btn:hover {
+            background: #ff3838;
+        }
+
+        .add-floor-btn {
+            padding: 8px 16px;
+            background: #83a737;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            transition: all 0.2s;
+            margin-top: 10px;
+        }
+
+        .add-floor-btn:hover {
+            background: #6d8c2f;
+        }
+
+        .equipment-item-group {
+            display: grid;
+            grid-template-columns: 2fr 1fr auto;
+            gap: 8px;
+            margin-bottom: 10px;
+            align-items: flex-end;
+        }
+
+        .add-equipment-btn {
+            padding: 8px 16px;
+            background: #83a737;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            transition: all 0.2s;
+            margin-top: 10px;
+        }
+
+        .add-equipment-btn:hover {
+            background: #6d8c2f;
+        }
+
+        /* Date picker styles */
+        #date-picker {
+            animation: slideDown 0.2s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #calendar-grid button {
+            padding: 8px;
+            border: 1px solid #e0e0e0;
+            background: white;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 12px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        #calendar-grid button:hover {
+            background: #f0f0f0;
+            border-color: #83a737;
+        }
+
+        #calendar-grid button.other-month {
+            color: #ccc;
+            background: #f9f9f9;
+        }
+
+        #calendar-grid button.today {
+            background: #e8f5e9;
+            border-color: #83a737;
+            font-weight: bold;
+        }
+
+        #calendar-grid button.selected {
+            background: #83a737;
+            color: white;
+            border-color: #83a737;
+        }
+
+        #calendar-grid button.disabled {
+            color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #date-picker-toggle:focus {
+            outline: none;
+            border-color: #83a737;
+        }
+
+        #date-picker-toggle:hover {
+            border-color: #83a737;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="header-top">
-            <a href="tofes.html" class="nav-btn">למילוי היומן</a>
+            <div class="nav-group">
+                <a href="tofes.html" class="nav-btn">למילוי היומן</a>
+                <button disabled class="nav-sub-btn">מילוי קריאת שירות</button>
+            </div>
             <img src="project/assets/utech.png" alt="Utech" class="logo">
-            <a href="index.html" class="nav-btn">סידור עבודה</a>
+            <div class="nav-group">
+                <a href="index.html" class="nav-btn">סידור עבודה</a>
+                <button disabled class="nav-sub-btn">קריאות שירות פתחות</button>
+            </div>
         </div>
         <div class="view-toggle">
             <button class="view-btn active" data-view="project">לפי פרויקט</button>
@@ -568,6 +945,22 @@
         </div>
         <div class="search-container" id="search-container">
             <input type="text" class="search-input" id="search-input" placeholder="חפש כתובת...">
+        </div>
+        <div id="date-search-container" style="display: none; width: 100%; max-width: 500px; margin-top: 10px;">
+            <div style="position: relative;">
+                <button id="date-picker-toggle" style="width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; text-align: left; font-size: 16px; cursor: pointer; transition: border-color 0.3s; display: flex; align-items: center; gap: 10px; color: #666;">
+                    <span style="font-size: 18px;">📅</span>
+                    <span id="date-display">בחר תאריך...</span>
+                </button>
+                <div id="date-picker" style="display: none; position: absolute; top: 100%; right: 0; background: white; border: 2px solid #83a737; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; width: 100%; min-width: 320px; padding: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <button type="button" id="prev-month" style="background: none; border: none; cursor: pointer; font-size: 18px; color: #83a737;">►</button>
+                        <span id="month-year" style="font-weight: bold; color: #333; text-align: center;"></span>
+                        <button type="button" id="next-month" style="background: none; border: none; cursor: pointer; font-size: 18px; color: #83a737;">◄</button>
+                    </div>
+                    <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px;"></div>
+                </div>
+            </div>
         </div>
         <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
             <button id="add-project-btn" style="padding: 12px 24px; background: #83a737; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s;">הוסף פרויקט</button>
@@ -603,6 +996,63 @@
         </div>
     </div>
 
+    <!-- Edit Modal -->
+    <div id="edit-modal-overlay" class="edit-modal-overlay">
+        <div class="edit-modal-content">
+            <div class="edit-modal-header">
+                <h2 id="edit-modal-title">עריכת רשומה</h2>
+                <p id="edit-modal-subtitle"></p>
+            </div>
+            <form id="edit-form">
+                <!-- Project name -->
+                <div class="edit-form-group">
+                    <label class="edit-form-label">פרויקט</label>
+                    <select id="edit-project" class="edit-form-input" required>
+                        <option value="" disabled>בחר פרויקט</option>
+                    </select>
+                </div>
+
+                <!-- Address -->
+                <div class="edit-form-group">
+                    <label class="edit-form-label">כתובת</label>
+                    <input type="text" id="edit-address" class="edit-form-input" placeholder="הכנס כתובת">
+                </div>
+
+                <!-- Floors -->
+                <div class="edit-form-group">
+                    <label class="edit-form-label">עבודה בקומות</label>
+                    <div id="floors-container"></div>
+                    <button type="button" class="add-floor-btn" id="add-floor-btn">+ הוסף קומה</button>
+                </div>
+
+                <!-- Equipment -->
+                <div class="edit-form-group">
+                    <label class="edit-form-label">אביזרים וציוד שהותקנו / הוחלפו</label>
+                    <div id="equipment-container"></div>
+                    <button type="button" class="add-equipment-btn" id="add-equipment-btn">+ הוסף ציוד</button>
+                </div>
+
+                <!-- Issues -->
+                <div class="edit-form-group">
+                    <label class="edit-form-label">תקלות / ליקויים שהתגלו</label>
+                    <textarea id="edit-issues" class="edit-form-textarea" placeholder="תאר את התקלות שהתגלו"></textarea>
+                </div>
+
+                <!-- Next Visit -->
+                <div class="edit-form-group">
+                    <label class="edit-form-label">מה נדרש להשלים בביקור הבא</label>
+                    <textarea id="edit-nextVisit" class="edit-form-textarea" placeholder="תאר מה נדרש להשלים בביקור הבא"></textarea>
+                </div>
+
+                <!-- Buttons -->
+                <div class="edit-modal-buttons">
+                    <button type="button" class="edit-cancel-btn" id="edit-cancel-btn">ביטול</button>
+                    <button type="submit" class="edit-save-btn">שמור שינויים</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -625,6 +1075,38 @@
         let currentView = 'project';
         let searchQuery = '';
         let projectsList = {};
+
+        // Notification function
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+            notification.style.cssText = `
+              position: fixed;
+              top: 20px;
+              right: 20px;
+              background-color: #83a737;
+              color: white;
+              padding: 12px 20px;
+              border-radius: 6px;
+              font-size: 14px;
+              font-weight: bold;
+              z-index: 10000;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+              animation: slideIn 0.3s ease;
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+              notification.style.animation = 'slideOut 0.3s ease';
+              setTimeout(() => {
+                if (notification.parentNode) {
+                  notification.parentNode.removeChild(notification);
+                }
+              }, 300);
+            }, 3000);
+        }
 
         // Load projects from Firebase
         const projectsRef = ref(database, 'projects');
@@ -663,7 +1145,7 @@
                             // Project list will update automatically via onValue listener
                         } catch (error) {
                             console.error('Error deleting project:', error);
-                            alert('שגיאה במחיקת הפרויקט');
+                            showNotification('שגיאה במחיקת הפרויקט');
                         }
                     }
                 });
@@ -709,7 +1191,7 @@
             const projectName = projectInput.value.trim();
 
             if (!projectName) {
-                alert('נא להזין שם פרויקט');
+                showNotification('נא להזין שם פרויקט');
                 return;
             }
 
@@ -718,7 +1200,7 @@
                 const projectExists = Object.values(projectsList).some(p => p.name === projectName);
                 
                 if (projectExists) {
-                    alert('פרויקט זה כבר קיים');
+                    showNotification('פרויקט זה כבר קיים');
                     return;
                 }
 
@@ -730,10 +1212,10 @@
                 });
 
                 projectInput.value = '';
-                alert('פרויקט הוסף בהצלחה');
+                showNotification('פרויקט הוסף בהצלחה');
             } catch (error) {
                 console.error('Error adding project:', error);
-                alert('שגיאה בהוספת הפרויקט');
+                showNotification('שגיאה בהוספת הפרויקט');
             }
         }
 
@@ -768,22 +1250,152 @@
                 
                 // Show/hide search based on view
                 const searchContainer = document.getElementById('search-container');
+                const dateSearchContainer = document.getElementById('date-search-container');
                 if (currentView === 'address') {
                     searchContainer.classList.add('active');
+                    dateSearchContainer.classList.remove('active');
+                } else if (currentView === 'date') {
+                    searchContainer.classList.remove('active');
+                    dateSearchContainer.classList.add('active');
                 } else {
                     searchContainer.classList.remove('active');
+                    dateSearchContainer.classList.remove('active');
                     searchQuery = '';
-                    document.getElementById('search-input').value = '';
+                    const searchInput = document.getElementById('search-input');
+                    if (searchInput) {
+                        searchInput.value = '';
+                    }
                 }
                 
                 renderView(currentView);
             });
         });
 
-        // Search input
+        // Search input for address
         document.getElementById('search-input').addEventListener('input', (e) => {
             searchQuery = e.target.value.toLowerCase();
             renderView(currentView);
+        });
+        
+        // Date picker functionality
+        let dateSearchQuery = '';
+        let currentPickerDate = new Date();
+
+        function renderCalendar() {
+            const monthYear = document.getElementById('month-year');
+            const calendarGrid = document.getElementById('calendar-grid');
+            const year = currentPickerDate.getFullYear();
+            const month = currentPickerDate.getMonth();
+
+            // Set header
+            const monthNames = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 
+                               'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+            monthYear.textContent = `${monthNames[month]} ${year}`;
+
+            // Clear calendar
+            calendarGrid.innerHTML = '';
+
+            // Add day headers
+            const dayHeaders = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+            dayHeaders.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.textContent = day;
+                dayHeader.style.textAlign = 'center';
+                dayHeader.style.fontWeight = 'bold';
+                dayHeader.style.fontSize = '11px';
+                dayHeader.style.color = '#666';
+                dayHeader.style.padding = '5px';
+                calendarGrid.appendChild(dayHeader);
+            });
+
+            // Get first day of month and number of days
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+            // Add days from previous month
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const dayBtn = document.createElement('button');
+                dayBtn.textContent = daysInPrevMonth - i;
+                dayBtn.className = 'other-month';
+                dayBtn.disabled = true;
+                dayBtn.type = 'button';
+                calendarGrid.appendChild(dayBtn);
+            }
+
+            // Add days of current month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayBtn = document.createElement('button');
+                dayBtn.textContent = day;
+                dayBtn.type = 'button';
+
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const today = new Date().toISOString().split('T')[0];
+
+                if (dateStr === today) {
+                    dayBtn.classList.add('today');
+                }
+
+                if (dateStr === dateSearchQuery) {
+                    dayBtn.classList.add('selected');
+                }
+
+                dayBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    dateSearchQuery = dateStr;
+                    document.getElementById('date-display').textContent = dateStr;
+                    renderCalendar();
+                    renderView(currentView);
+                    setTimeout(() => {
+                        document.getElementById('date-picker').style.display = 'none';
+                    }, 200);
+                });
+
+                calendarGrid.appendChild(dayBtn);
+            }
+
+            // Add days from next month
+            const remainingDays = 42 - (firstDay + daysInMonth);
+            for (let day = 1; day <= remainingDays; day++) {
+                const dayBtn = document.createElement('button');
+                dayBtn.textContent = day;
+                dayBtn.className = 'other-month';
+                dayBtn.disabled = true;
+                dayBtn.type = 'button';
+                calendarGrid.appendChild(dayBtn);
+            }
+        }
+
+        // Date picker toggle
+        document.getElementById('date-picker-toggle').addEventListener('click', () => {
+            const datePicker = document.getElementById('date-picker');
+            const isOpen = datePicker.style.display === 'block';
+            datePicker.style.display = isOpen ? 'none' : 'block';
+            if (!isOpen) {
+                renderCalendar();
+            }
+        });
+
+        // Previous/Next month buttons
+        document.getElementById('prev-month').addEventListener('click', (e) => {
+            e.preventDefault();
+            currentPickerDate.setMonth(currentPickerDate.getMonth() - 1);
+            renderCalendar();
+        });
+
+        document.getElementById('next-month').addEventListener('click', (e) => {
+            e.preventDefault();
+            currentPickerDate.setMonth(currentPickerDate.getMonth() + 1);
+            renderCalendar();
+        });
+
+        // Close date picker when clicking outside
+        document.addEventListener('click', (e) => {
+            const dateContainer = document.getElementById('date-search-container');
+            if (dateContainer && dateContainer.classList.contains('active') && 
+                !dateContainer.contains(e.target)) {
+                document.getElementById('date-picker').style.display = 'none';
+            }
         });
 
         function renderView(view) {
@@ -910,7 +1522,17 @@
                 });
             });
 
-            const sortedDates = Array.from(datesMap.keys()).sort().reverse();
+            let sortedDates = Array.from(datesMap.keys()).sort().reverse();
+            
+            // Filter dates by date search query if provided
+            if (dateSearchQuery) {
+                sortedDates = sortedDates.filter(date => date === dateSearchQuery);
+            }
+            
+            if (sortedDates.length === 0) {
+                container.innerHTML = '<div class="empty-state">לא נמצאו תאריכים</div>';
+                return;
+            }
 
             sortedDates.forEach((date, index) => {
                 const column = createColumn(formatDate(date), index);
@@ -955,7 +1577,7 @@
                 Object.keys(workLogsData[worker]).forEach(date => {
                     Object.keys(workLogsData[worker][date]).forEach(project => {
                         const projectData = workLogsData[worker][date][project];
-                        const address = projectData.address || 'No address';
+                        const address = projectData.address || 'אין כתובת';
                         
                         if (!addressMap.has(address)) {
                             addressMap.set(address, []);
@@ -1069,6 +1691,10 @@
                 <div class="modal-header">
                     <h2><b>${project}</b></h2>
                     <h3>${worker} • ${formatDate(date)}${data.address ? ' • ' + data.address : ''}</h3>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button id="edit-btn" style="padding: 10px 20px; background: #83a737; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.3s; flex: 1;">עריכה</button>
+                        <button id="delete-btn" style="padding: 10px 20px; background: #ff4757; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.3s; flex: 1;">מחק</button>
+                    </div>
                 </div>
             `;
 
@@ -1137,7 +1763,255 @@
 
             modalBody.innerHTML = html;
             document.getElementById('modal-overlay').classList.add('active');
+            
+            // Add event listeners for edit and delete buttons
+            document.getElementById('edit-btn').addEventListener('click', () => {
+                openEditModal(worker, date, project);
+            });
+            
+            document.getElementById('delete-btn').addEventListener('click', () => {
+                if (confirm(`האם אתה בטוח שברצונך למחוק את הרשומה של ${worker} ב-${formatDate(date)} בפרויקט ${project}?`)) {
+                    const refToDelete = ref(database, `workLogs/${worker}/${date}/${project}`);
+                    set(refToDelete, null).then(() => {
+                        showNotification('הרשומה נמחקה בהצלחה');
+                        closeModal();
+                        renderView(currentView);
+                    }).catch(error => {
+                        console.error('Error deleting entry:', error);
+                        showNotification('שגיאה במחיקת הרשומה');
+                    });
+                }
+            });
         }
+
+        function openEditModal(worker, date, project) {
+            const data = workLogsData[worker][date][project];
+            const editForm = document.getElementById('edit-form');
+            
+            // Set header
+            document.getElementById('edit-modal-title').textContent = `עריכת ${project}`;
+            document.getElementById('edit-modal-subtitle').textContent = `${worker} • ${formatDate(date)}`;
+            
+            // Fill project select with available projects
+            const projectSelect = document.getElementById('edit-project');
+            const projects = Object.values(projectsList).sort((a, b) => 
+                a.name.localeCompare(b.name, 'he')
+            );
+            
+            projectSelect.innerHTML = '<option value="" disabled>בחר פרויקט</option>';
+            projects.forEach(proj => {
+                const option = document.createElement('option');
+                option.value = proj.name;
+                option.textContent = proj.name;
+                if (proj.name === project) {
+                    option.selected = true;
+                }
+                projectSelect.appendChild(option);
+            });
+            
+            projectSelect.value = project;
+            
+            // Update header when project selection changes
+            projectSelect.addEventListener('change', (e) => {
+                document.getElementById('edit-modal-title').textContent = `עריכת ${e.target.value}`;
+            }, { once: false });
+            
+            // Fill other fields
+            document.getElementById('edit-address').value = data.address || '';
+            document.getElementById('edit-issues').value = data.issues || '';
+            document.getElementById('edit-nextVisit').value = data.nextVisit || '';
+            
+            // Fill floors
+            const floorsContainer = document.getElementById('floors-container');
+            floorsContainer.innerHTML = '';
+            if (data.floors && Object.keys(data.floors).length > 0) {
+                Object.keys(data.floors).forEach(floor => {
+                    const floorValue = data.floors[floor];
+                    if (floor && floorValue) {
+                        addFloorInput(floor, floorValue);
+                    }
+                });
+            }
+            
+            // Fill equipment
+            const equipmentContainer = document.getElementById('equipment-container');
+            equipmentContainer.innerHTML = '';
+            if (data.equipment && data.equipment.length > 0) {
+                data.equipment.forEach(item => {
+                    if (item.name || item.quantity) {
+                        addEquipmentInput(item.name || '', item.quantity || '');
+                    }
+                });
+            }
+            
+            // Store original data for reference
+            editForm.dataset.worker = worker;
+            editForm.dataset.date = date;
+            editForm.dataset.project = project;
+            
+            // Show edit modal
+            closeModal();
+            document.getElementById('edit-modal-overlay').classList.add('active');
+        }
+
+        function addFloorInput(floorNumber = '', floorValue = '') {
+            const floorsContainer = document.getElementById('floors-container');
+            const floorGroup = document.createElement('div');
+            floorGroup.className = 'floor-input-group';
+            
+            // Create floor select
+            const floorSelect = document.createElement('select');
+            floorSelect.className = 'edit-form-input floor-number';
+            
+            // Add options
+            for (let i = -5; i <= 40; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i < 0 ? `מינוס ${Math.abs(i)}` : (i === 0 ? 'קרקע' : `קומה ${i}`);
+                if (i.toString() === floorNumber) {
+                    option.selected = true;
+                }
+                floorSelect.appendChild(option);
+            }
+            
+            floorGroup.appendChild(floorSelect);
+            
+            // Add work description input
+            const workInput = document.createElement('input');
+            workInput.type = 'text';
+            workInput.className = 'edit-form-input floor-value';
+            workInput.placeholder = 'תיאור העבודה';
+            workInput.value = floorValue;
+            floorGroup.appendChild(workInput);
+            
+            // Add delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'floor-delete-btn';
+            deleteBtn.textContent = 'מחק';
+            deleteBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                floorGroup.remove();
+            });
+            floorGroup.appendChild(deleteBtn);
+            
+            floorsContainer.appendChild(floorGroup);
+        }
+
+        function addEquipmentInput(equipmentName = '', equipmentQuantity = '') {
+            const equipmentContainer = document.getElementById('equipment-container');
+            const equipmentGroup = document.createElement('div');
+            equipmentGroup.className = 'equipment-item-group';
+            equipmentGroup.innerHTML = `
+                <input type="text" class="edit-form-input equipment-name" placeholder="שם הציוד" value="${equipmentName}">
+                <input type="text" class="edit-form-input equipment-quantity" placeholder="כמות" value="${equipmentQuantity}">
+                <button type="button" class="equipment-delete-btn">מחק</button>
+            `;
+            
+            equipmentGroup.querySelector('.equipment-delete-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                equipmentGroup.remove();
+            });
+            
+            equipmentContainer.appendChild(equipmentGroup);
+        }
+
+        // Handle add floor button
+        document.getElementById('add-floor-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            addFloorInput();
+        });
+
+        // Handle add equipment button
+        document.getElementById('add-equipment-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            addEquipmentInput();
+        });
+
+        // Handle edit form submission
+        document.getElementById('edit-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const worker = e.target.dataset.worker;
+            const date = e.target.dataset.date;
+            const oldProject = e.target.dataset.project;
+            const newProject = document.getElementById('edit-project').value;
+            
+            if (!newProject) {
+                showNotification('בחר פרויקט');
+                return;
+            }
+            
+            try {
+                // Collect floors data
+                const floors = {};
+                document.querySelectorAll('.floor-input-group').forEach(group => {
+                    const floorNumber = group.querySelector('.floor-number').value;
+                    const floorValue = group.querySelector('.floor-value').value;
+                    if (floorNumber && floorValue) {
+                        floors[floorNumber] = floorValue;
+                    }
+                });
+                
+                // Collect equipment data
+                const equipment = [];
+                document.querySelectorAll('.equipment-item-group').forEach(group => {
+                    const name = group.querySelector('.equipment-name').value;
+                    const quantity = group.querySelector('.equipment-quantity').value;
+                    if (name || quantity) {
+                        equipment.push({
+                            name: name || '',
+                            quantity: quantity || ''
+                        });
+                    }
+                });
+                
+                // Prepare updated data
+                const updatedData = {
+                    ...workLogsData[worker][date][oldProject],
+                    address: document.getElementById('edit-address').value,
+                    floors: floors,
+                    equipment: equipment,
+                    issues: document.getElementById('edit-issues').value,
+                    nextVisit: document.getElementById('edit-nextVisit').value
+                };
+                
+                // If project changed, delete old and create new
+                if (oldProject !== newProject) {
+                    // Delete old entry
+                    const oldRef = ref(database, `workLogs/${worker}/${date}/${oldProject}`);
+                    await set(oldRef, null);
+                    
+                    // Create new entry with new project name
+                    const newRef = ref(database, `workLogs/${worker}/${date}/${newProject}`);
+                    await set(newRef, updatedData);
+                } else {
+                    // Update existing entry
+                    const updateRef = ref(database, `workLogs/${worker}/${date}/${oldProject}`);
+                    await set(updateRef, updatedData);
+                }
+                
+                showNotification('הרשומה עודכנה בהצלחה!');
+                document.getElementById('edit-modal-overlay').classList.remove('active');
+                renderView(currentView);
+            } catch (error) {
+                console.error('Error updating entry:', error);
+                showNotification('שגיאה בעדכון הרשומה');
+            }
+        });
+
+        // Handle cancel edit button
+        document.getElementById('edit-cancel-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('edit-modal-overlay').classList.remove('active');
+        });
+
+        // Close edit modal when clicking on overlay
+        document.getElementById('edit-modal-overlay').addEventListener('click', (e) => {
+            if (e.target.id === 'edit-modal-overlay') {
+                document.getElementById('edit-modal-overlay').classList.remove('active');
+            }
+        });
 
         window.closeModal = function() {
             document.getElementById('modal-overlay').classList.remove('active');
